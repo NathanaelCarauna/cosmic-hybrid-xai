@@ -1,0 +1,13 @@
+%% D5 — Isomorfismo COSMIC <-> diagrama de sequência.
+%% Cada mensagem numerada é exatamente um movimento de dados; a numeração final
+%% é o CFP. Exemplo: "Agendar consulta" -> 4 CFP (Entry, Read, Write, Exit).
+sequenceDiagram
+    autonumber
+    participant U as Usuário funcional
+    participant S as Sistema
+    participant A as Armazenamento
+    U->>S: dados do agendamento  [Entry]
+    A->>S: ficha do paciente  [Read]
+    S->>A: agendamento gravado  [Write]
+    S->>U: confirmação  [Exit]
+    note over U,A: CFP = 4 (uma mensagem por movimento)

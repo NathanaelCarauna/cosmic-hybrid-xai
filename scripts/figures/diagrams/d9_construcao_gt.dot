@@ -1,0 +1,34 @@
+// D9 — Construção do ground truth de histórias de usuário: amostragem ->
+// pré-anotação por IA + dois anotadores humanos independentes -> adjudicação
+// humana às cegas -> GT de 98 itens, com kappa humano x humano reportado.
+digraph gt {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
+  nodesep=0.3; ranksep=0.6;
+
+  amostra [label="100 histórias (Dalpiaz)\namostragem estratificada\npor projeto, semente fixa", fillcolor="#eeeeee", shape=note];
+  prot [label="Protocolo de anotação\nformal (manual COSMIC\noperacionalizado)", fillcolor="#fbe6cc"];
+
+  subgraph cluster_anot {
+    label="Anotação independente";
+    fontname="Helvetica"; fontsize=10; color="#7aa6d6"; style="rounded"; bgcolor="#f3f8fd";
+    a1 [label="A1: pré-anotação\npor LLM", fillcolor="#dfeaf5"];
+    a2 [label="A2: anotador\nhumano", fillcolor="#d7e8d2"];
+    a3 [label="A3: anotador\nhumano", fillcolor="#d7e8d2"];
+  }
+
+  adj [label="Adjudicação humana\n(cega aos modelos avaliados)", fillcolor="#f5d9d3", penwidth=1.3];
+  gt  [label="Ground truth\n98 itens", fillcolor="#e8e2f0", penwidth=1.4];
+
+  kappa [shape=note, fillcolor="#ffffff", fontsize=9,
+         label="kappa humano x humano = 0,66 (exato) /\n0,71 (ponderado); Fleiss = 0,67\n(concordância substancial)"];
+
+  amostra -> prot;
+  prot -> a1; prot -> a2; prot -> a3;
+  a1 -> adj; a2 -> adj; a3 -> adj;
+  adj -> gt;
+  gt -> kappa [style=invis];
+  { rank=sink; kappa; }
+}

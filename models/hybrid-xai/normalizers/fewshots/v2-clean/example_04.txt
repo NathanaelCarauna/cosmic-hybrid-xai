@@ -1,0 +1,15 @@
+Example 4 (Use Case, 8 CFP — meeting scheduling with multiple reads and writes):
+Input: UC-CAL-01 Schedule meeting. Organizer selects attendees and preferred time slot. System checks attendee calendars and room availability, displays available slots. Organizer confirms. System creates meeting record, updates attendee calendars, sends invitations.
+Steps: 1. Organizer selects Schedule meeting | 2. System shows form | 3. Organizer fills attendees, date, duration, room preference | 4. System reads attendee calendars | 5. System reads room records | 6. System displays available time slots | 7. Organizer selects slot and confirms | 8. System creates meeting record | 9. System updates attendee calendar entries | 10. System sends invitation emails | Exception: System shows error if no slot available or room unavailable
+
+Output (each DISTINCT data store = separate R, each DISTINCT write target = separate W):
+{"functional_processes": [{"name": "Schedule meeting", "data_movements": [
+  {"type": "E", "data_group": "Meeting request", "object_of_interest": "Meeting", "functional_user": "Organizer", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Attendee calendars", "object_of_interest": "Calendar entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Room records", "object_of_interest": "Room", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Available time slots", "object_of_interest": "Meeting", "functional_user": "Organizer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "E", "data_group": "Slot selection and confirmation", "object_of_interest": "Meeting", "functional_user": "Organizer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Meeting record", "object_of_interest": "Meeting", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Attendee calendar entries", "object_of_interest": "Calendar entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Messages", "object_of_interest": "Meeting", "functional_user": "Organizer", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}

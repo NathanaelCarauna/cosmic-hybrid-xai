@@ -1,0 +1,9 @@
+{
+  "variant": "baseline-linear-reg",
+  "mae": 1.7,
+  "pred25": 0.5333,
+  "sa": -0.0729,
+  "r2": -0.0307,
+  "n_fps": 30,
+  "note": "LinearRegression(word_count \u2192 CFP), fit on train-89"
+}

@@ -1,0 +1,7 @@
+method,devito_mae,devito_sa,devito_n,devito_note,zenodo_mae,zenodo_sa,zenodo_n,zenodo_note,ochodek_mae,ochodek_sa,ochodek_n,ochodek_note,user-stories_mae,user-stories_sa,user-stories_n,user-stories_note
+hybrid-xai-e30f-clean,1.1333,0.2847,30,holdout-30 / LOOCV-119=0.933,1.185,-1.7558,200,"cross-dataset (frozen hparams, n=200)",7.4,-0.4751,200,"cross-dataset (frozen hparams, n=200)",1.4898,-1.0646,98,"cross-dataset (frozen hparams, n=98)"
+hybrid-xai-e33d,0.933,0.555,119,home,0.345,0.161,2040,"sentence rule R_DISPLAY_IMPLICIT_READ (held-out 70/30)",4.41,0.067,437,"per-format UC-name estimator (held-out LOPO-CV)",2.602,-2.606,98,cross-dataset (US wrapped as pseudo-UC; under-counts implicit E/R)
+hybrid-xai-e33d-adapters,0.933,0.555,119,home,0.345,0.161,2040,"sentence rule R_DISPLAY_IMPLICIT_READ (held-out 70/30)",4.41,0.067,437,"per-format UC-name estimator (held-out LOPO-CV)",0.5,0.261,78,"test-78 (adaptador Connextra calibrado em dev-20; full-98: MAE=0.459, SA=0.364)"
+r1-cosmet,0.37,0.824,119,"home (gpt-4-turbo, per-project weighted avg)",0.775,-0.8023,200,"cross-dataset (n=200, gpt-4-turbo)",6.7,-0.3356,200,"cross-dataset (n=200, gpt-4-turbo)",0.8878,-0.2303,98,"cross-dataset (n=98, gpt-4-turbo)"
+r2-deep-cosmic,3.092,-0.4753,,"zero-shot (train=Ochodek, RF name-only)",5.8095,-13.1263,,"zero-shot (train=Ochodek, RF sentence)",3.5913,0.2401,437,home (RF canonical),,,,N/A (format)
+r3-hko,1.6975,0.1901,119,LOOCV (UC-flow parsed as sentences),0.2892,0.2967,2040,,4.27,0.0964,437,home,0.602,0.1657,98,home (Hussain designed for user stories)

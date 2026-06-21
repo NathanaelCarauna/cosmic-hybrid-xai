@@ -1,0 +1,11 @@
+method,dataset,n,sa,ci95_lo,ci95_hi,p_sa_le_0,leitura
+E33d,devito,119,0.555,0.408,0.666,0.0,significativamente positivo
+E33d,zenodo,2040,0.077,0.014,0.135,0.01,significativamente positivo
+E33d,ochodek,437,0.045,-0.039,0.119,0.1567,nao distinguivel de zero
+E34a (test-78),user-stories,78,0.261,-0.024,0.492,0.0392,positivo unilateral p=0.039; IC bilateral cruza zero
+R1-COSMET,zenodo,200,-0.802,-1.292,-0.449,,significativamente NEGATIVO
+R1-COSMET,ochodek,200,-0.336,-0.47,-0.234,,significativamente NEGATIVO
+R1-COSMET,user-stories,98,-0.23,-0.555,-0.004,,significativamente NEGATIVO
+E30f-clean,zenodo,200,-1.756,-2.45,-1.29,,significativamente NEGATIVO
+E30f-clean,ochodek,200,-0.475,-0.624,-0.366,,significativamente NEGATIVO
+E30f-clean,user-stories,98,-1.065,-1.781,-0.612,,significativamente NEGATIVO

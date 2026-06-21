@@ -1,0 +1,2 @@
+n_classes,classifier,accuracy,kappa,mean_f1,cfp_mae,cfp_sa,wall_clock_s
+4,nb,0.5918,0.1079,0.5102,0.6122,0.1515,5.617

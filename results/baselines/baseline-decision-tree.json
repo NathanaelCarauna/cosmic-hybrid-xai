@@ -1,0 +1,9 @@
+{
+  "variant": "baseline-decision-tree",
+  "mae": 2.5667,
+  "pred25": 0.3,
+  "sa": -0.6199,
+  "r2": -1.1323,
+  "n_fps": 30,
+  "note": "DecisionTreeRegressor(max_depth=3, word_count \u2192 CFP), fit on train-89"
+}

@@ -1,0 +1,30 @@
+// D6 — Modelo de medição COSMIC: os quatro movimentos de dados cruzando a
+// fronteira do software. Entry/Exit com o usuário funcional; Read/Write com o
+// armazenamento persistente. Cada movimento vale 1 CFP.
+digraph cosmic {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=10, arrowsize=0.8];
+  nodesep=0.5; ranksep=0.9;
+
+  fu [label="Usuário funcional\n(humano, dispositivo\nou outro sistema)", fillcolor="#dfeaf5"];
+  store [label="Armazenamento\npersistente", fillcolor="#e7eed9"];
+
+  subgraph cluster_sw {
+    label="Fronteira do software";
+    fontname="Helvetica"; fontsize=11; color="#b05a2a"; style="rounded,dashed"; bgcolor="#fbeee9";
+    fp [label="Processo funcional\n(disparado por um evento\ndo usuário funcional)", fillcolor="#f5d9d3", penwidth=1.4];
+  }
+
+  fu -> fp [label="Entry (E)", color="#2a6fb0", fontcolor="#2a6fb0"];
+  fp -> fu [label="Exit (X)", color="#2a6fb0", fontcolor="#2a6fb0"];
+  // Read e Write como arestas paralelas no MESMO sentido de declaração (fp->store),
+  // que o Graphviz separa; Read usa dir=back para apontar storage -> software.
+  fp -> store [label="Read (R)", color="#3f9b56", fontcolor="#3f7b46", dir=back];
+  fp -> store [label="Write (W)", color="#3f9b56", fontcolor="#3f7b46"];
+
+  legenda [shape=note, fillcolor="#ffffff", fontsize=9,
+           label="Cada movimento = 1 CFP.\nTamanho do processo = soma dos movimentos.\nMínimo: 1 Entry de gatilho + 1 movimento."];
+  { rank=sink; legenda; }
+}

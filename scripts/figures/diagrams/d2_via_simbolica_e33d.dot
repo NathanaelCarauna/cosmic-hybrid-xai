@@ -1,0 +1,33 @@
+// D2 — Via simbólica E33d (pipeline detalhado). Sem NER (removido: decorativo).
+digraph e33d {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
+  nodesep=0.25; ranksep=0.5;
+
+  uc [label="Requisito\n(caso de uso / sentença)", fillcolor="#eeeeee", shape=note];
+  parse [label="Análise sintática\n(spaCy: dependências, lemas)", fillcolor="#dfeaf5"];
+  decomp [label="Decompositor de ações\ncompostas (verbo–tema)", fillcolor="#dfeaf5"];
+  srl [label="Papéis semânticos\n(escopo: só negação)", fillcolor="#dfeaf5"];
+
+  subgraph cluster_onto {
+    label="Ontologia COSMIC · 26 regras identificadas (motor invariante)";
+    fontname="Helvetica"; fontsize=10; color="#b05a2a"; style="rounded"; bgcolor="#fbeee9";
+    classif [label="Classificação por regra\n(ator·verbo·grupo de dados·\narmazenamento·interface)", fillcolor="#f5d9d3"];
+    perfmt [label="Regras por formato:\nR_DISPLAY_IMPLICIT_READ (sentença)\nconserto valida-grava (UC)", fillcolor="#f7e3dc", fontsize=9];
+    dedup [label="Deduplicação por\ngrupo de dados (ISO 19761)", fillcolor="#f5d9d3"];
+  }
+
+  mov [label="Movimentos\nE · X · R · W", fillcolor="#e8e2f0"];
+  cfp [label="CFP", fillcolor="#e8e2f0", penwidth=1.4];
+  trace [label="Trace: regra + trecho\npor movimento", fillcolor="#e1d4ef", shape=note];
+
+  uc -> parse -> decomp -> srl -> classif;
+  classif -> perfmt -> dedup;
+  dedup -> mov -> cfp;
+  classif -> trace [style=dashed, label="rule_id"];
+
+  noner [label="NER especializado\nREMOVIDO (decorativo:\nnão altera o CFP)", shape=box, style="dashed,filled", fillcolor="#f2f2f2", fontcolor="#999999", fontsize=9];
+  noner -> classif [style=dashed, color="#bbbbbb", arrowhead=none];
+}

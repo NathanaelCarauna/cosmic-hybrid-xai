@@ -1,0 +1,6 @@
+variant,mae,pred25,sa,r2,n_fps,note
+slm-raw,1.2,0.6,0.2426,0.4874,30,Raw SLM y_raw_slm only
+correction-only,1.1333,0.6333,0.2847,0.5528,30,TieredCorrection grid-searched on 89 train FPs
+bert-only,1.0,0.6667,0.3689,0.5201,30,"BERT [CLS] + text feats → Ridge(alpha=10), no SLM"
+ensemble-fixed-w,0.8667,0.6667,0.453,0.6619,30,"Full E30f pipeline, frozen w=0.7264 (no per-sample CV)"
+E30f-clean,1.1333,0.6333,0.2847,0.411,30,Full E30f-clean with per-sample nested CV blend weight

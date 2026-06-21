@@ -1,0 +1,7 @@
+baseline,train_dataset,eval_dataset,n_train,n_eval,mae,pred25,sa,r2,note
+median-train,devito,devito-holdout,89,30,1.4333,0.4,0.0954,-0.0525,Median train CFP = 4.0
+linear-tokens,devito,devito-holdout,89,30,1.7743,0.3,-0.1198,-0.0509,LinearRegression on n_tokens; coef=-0.0003 intercept=5.1440
+tree-shallow,devito,devito-holdout,89,30,3.4,0.3667,-1.1459,-6.0133,"DecisionTreeRegressor(max_depth=4) on [n_tokens, text_len, n_lines]; n_leaves=15"
+median-train,zenodo,zenodo-holdout,1990,50,0.3,0.72,0.2938,-0.2482,Median train CFP = 1.0
+linear-tokens,zenodo,zenodo-holdout,1990,50,0.4443,0.46,-0.046,-0.167,LinearRegression on n_tokens; coef=0.0076 intercept=1.1311
+tree-shallow,zenodo,zenodo-holdout,1990,50,0.3,0.7,0.2938,-0.1013,"DecisionTreeRegressor(max_depth=4) on [n_tokens, text_len, n_lines]; n_leaves=15"

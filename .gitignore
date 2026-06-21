@@ -1,0 +1,21 @@
+# Local SLM model binaries (download separately; not redistributed)
+models/gguf/
+*.gguf
+*.bin
+*.safetensors
+
+# Raw third-party datasets (not redistributed; see README for sources)
+datasets/raw/
+datasets/prepared/
+datasets/cosmic-casestudies/
+datasets/manifest.csv
+
+# Bulk run outputs (regenerate via run_all.sh); only summaries are tracked
+results/**/measurements/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env

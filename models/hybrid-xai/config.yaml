@@ -1,0 +1,78 @@
+# Hybrid XAI — experiment configuration
+method_name: hybrid-xai
+description: >
+  Hybrid and Explainable AI approach for automating COSMIC functional
+  size measurement using local Small Language Models (SLMs) and NLP.
+
+# Experiment matrix
+experiments:
+  E1:
+    normalizer: nlp
+    ir_mode: semantic
+    model: null
+    cost_per_fp: 0
+    description: "spaCy NLP-only floor"
+
+  E2:
+    normalizer: slm
+    ir_mode: full
+    model: qwen2.5-7b-instruct-q4_k_m
+    cost_per_fp: 0
+    description: "Qwen2.5-7B IR-Full"
+
+  E3:
+    normalizer: slm
+    ir_mode: full
+    model: qwen2.5-3b-instruct-q4_k_m
+    cost_per_fp: 0
+    description: "Qwen2.5-3B IR-Full (faster)"
+
+  E4:
+    normalizer: slm
+    ir_mode: semantic
+    model: qwen2.5-7b-instruct-q4_k_m
+    cost_per_fp: 0
+    description: "Qwen2.5-7B IR-Semantic"
+
+  E5:
+    normalizer: hybrid
+    ir_mode: full
+    model: qwen2.5-3b-instruct-q4_k_m
+    cost_per_fp: 0
+    description: "spaCy pre-process + SLM refinement"
+
+  E6:
+    normalizer: slm
+    ir_mode: full
+    model: gpt-4o-mini
+    cost_per_fp: 0.001
+    description: "API reference (gpt-4o-mini)"
+
+# Datasets
+datasets:
+  devito:
+    path: replications/cosmet-devito/datasets/MIS/ALBERGATE/FP_prompts
+    source_format: use_case
+    n_fps: 62
+
+  zenodo:
+    path: results/cosmet/ZENODO-sentence-gpt-4-turbo-20260323T011209/measurements
+    source_format: sentence
+    n_fps: 2040
+
+  ochodek:
+    path: replications/cosmet-devito/datasets/Ochodek
+    source_format: uc_name
+    n_fps: 437
+
+# Hardware
+hardware:
+  gpu: "AMD RX 6700 XT (12GB VRAM, gfx1031)"
+  cpu: "AMD Ryzen 5 5600 (6C/12T)"
+  ram: "32GB"
+  inference_backend: "llama-cpp-python (CPU, ROCm/Vulkan planned)"
+
+hyperparameters:
+  temperature: 0
+  n_ctx: 4096
+  n_threads: 6

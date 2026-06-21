@@ -1,0 +1,28 @@
+// D7 — Representação Intermediária (IR): esquema hierárquico comum a todos os
+// formatos. Requisito -> processos funcionais -> passos -> ações atômicas.
+// Dois modos: IR-Full (movimentos já explicitados) e IR-Semantic (só elementos).
+digraph ir {
+  rankdir=TB;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
+  nodesep=0.3; ranksep=0.5;
+
+  req  [label="Requisito (qualquer formato)", fillcolor="#eeeeee", shape=note];
+  proc [label="Processo funcional\n(1..n)  —  >= 1 Entry de gatilho", fillcolor="#dfeaf5"];
+  step [label="Passo (1..n)", fillcolor="#e7eef7"];
+  acao [label="Ação atômica", fillcolor="#fbe6cc"];
+
+  campos [label="{ator (usuário ou sistema) | verbo lematizado | grupo de dados | objeto de interesse | negação · condição · elemento de interface}",
+          shape=record, fillcolor="#fdf1e2", fontsize=10];
+
+  req -> proc -> step -> acao -> campos;
+
+  // modos de preenchimento
+  full [label="IR-Full\nmovimentos E/X/R/W já\nexplicitados pelo normalizador", fillcolor="#d7e8d2", fontsize=9];
+  sem  [label="IR-Semantic\nsó elementos semânticos;\nclassificação fica a cargo do M2", fillcolor="#d7e8d2", fontsize=9];
+  campos -> full [style=dashed, label="modo"];
+  campos -> sem  [style=dashed, label="modo"];
+
+  { rank=same; full; sem; }
+}

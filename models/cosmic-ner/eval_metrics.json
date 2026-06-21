@@ -1,0 +1,96 @@
+{
+  "val": {
+    "FUNC_USER": {
+      "precision": 0.9273,
+      "recall": 0.8226,
+      "f1": 0.8718
+    },
+    "DATA_OBJ": {
+      "precision": 0.4,
+      "recall": 0.0385,
+      "f1": 0.0702
+    },
+    "ACTION_VERB": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "UI_ELEMENT": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0
+    },
+    "PERSIST_STORE": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+    },
+    "CONDITION": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+    },
+    "OVERALL": {
+      "precision": 0.9231,
+      "recall": 0.6207,
+      "f1": 0.7423
+    }
+  },
+  "test": {
+    "FUNC_USER": {
+      "precision": 0.575,
+      "recall": 0.5287,
+      "f1": 0.5509
+    },
+    "DATA_OBJ": {
+      "precision": 0.5714,
+      "recall": 0.0741,
+      "f1": 0.1311
+    },
+    "ACTION_VERB": {
+      "precision": 0.9623,
+      "recall": 0.6892,
+      "f1": 0.8031
+    },
+    "UI_ELEMENT": {
+      "precision": 0.25,
+      "recall": 0.1111,
+      "f1": 0.1538
+    },
+    "PERSIST_STORE": {
+      "precision": 0,
+      "recall": 0.0,
+      "f1": 0
+    },
+    "CONDITION": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+    },
+    "OVERALL": {
+      "precision": 0.7083,
+      "recall": 0.4493,
+      "f1": 0.5499
+    }
+  },
+  "split": {
+    "train": [
+      "ALBERGATE",
+      "K01726",
+      "K01719"
+    ],
+    "val": [
+      "AutomaticLineSwitching",
+      "K01720"
+    ],
+    "test": [
+      "RiceCooker",
+      "U-CURE"
+    ]
+  },
+  "best_epoch": 11,
+  "max_epochs": 50,
+  "patience": 8,
+  "dropout": 0.35,
+  "seed": 42
+}

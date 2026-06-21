@@ -1,0 +1,4 @@
+variant,mae,pred25,sa,r2,n_fps,note
+baseline-median,1.4333,0.4,0.0954,-0.0525,30,Train median CFP=4.0 applied to all holdout FPs
+baseline-linear-reg,1.7,0.5333,-0.0729,-0.0307,30,"LinearRegression(word_count → CFP), fit on train-89"
+baseline-decision-tree,2.5667,0.3,-0.6199,-1.1323,30,"DecisionTreeRegressor(max_depth=3, word_count → CFP), fit on train-89"

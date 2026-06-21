@@ -1,0 +1,47 @@
+// D1 — Arquitetura do framework Hybrid-XAI (visão geral).
+// Núcleo INVARIANTE (M2 motor de regras + M3 explicabilidade); apenas a
+// normalização (M1) é especializada por formato. Render: build_diagrams.sh
+digraph hybridxai {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322", penwidth=1.1];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
+  nodesep=0.28; ranksep=0.55;
+
+  in [label="Requisitos heterogêneos\n(casos de uso, sentenças,\nnomes de UC, histórias de usuário)", fillcolor="#eeeeee", shape=note];
+
+  m0 [label="M0 · Pré-processamento\ne detecção de formato", fillcolor="#dfeaf5"];
+
+  subgraph cluster_m1 {
+    label="M1 · Normalização semântica (especializada por FORMATO)";
+    fontname="Helvetica"; fontsize=11; color="#7aa6d6"; style="rounded"; bgcolor="#f3f8fd";
+    n_uc   [label="Parser de caso de uso\n+ conserto valida-grava", fillcolor="#d7e8d2"];
+    n_sent [label="Sentença avulsa\n+ Read na exibição\n(R_DISPLAY_IMPLICIT_READ)", fillcolor="#d7e8d2"];
+    n_name [label="Estimador de nome de UC\n(linear interpretável)", fillcolor="#d7e8d2"];
+    n_us   [label="Adaptador Connextra\n(história de usuário, E34a)", fillcolor="#d7e8d2"];
+  }
+
+  ir [label="Representação\nIntermediária (IR)\nator·ação·grupo de dados", fillcolor="#fbe6cc", shape=box];
+
+  m2 [label="M2 · Motor de medição COSMIC\nontologia de 26 regras\n(E/X/R/W) — INVARIANTE ao formato", fillcolor="#f5d9d3", penwidth=1.8, color="#b05a2a"];
+
+  cfp [label="CFP\n(tamanho funcional)", fillcolor="#e8e2f0", shape=box, penwidth=1.4];
+
+  subgraph cluster_m3 {
+    label="M3 · Explicabilidade por construção";
+    fontname="Helvetica"; fontsize=11; color="#9b86c2"; style="rounded"; bgcolor="#f6f3fb";
+    trace [label="Trace tabular\nregra COSMIC · trecho citado", fillcolor="#e8e2f0"];
+    seq   [label="Diagrama de sequência\n(mensagens numeradas = CFP)", fillcolor="#e8e2f0"];
+  }
+
+  in -> m0;
+  m0 -> n_uc; m0 -> n_sent; m0 -> n_name; m0 -> n_us;
+  n_uc -> ir; n_sent -> ir; n_name -> ir [style=dashed, label="estimativa direta"]; n_us -> ir;
+  ir -> m2 -> cfp;
+  m2 -> trace [style=dashed]; m2 -> seq [style=dashed];
+
+  // nota de instanciação
+  note [label="Duas instanciações:\nvia simbólica E33d (custo nulo, CPU)\nvia neural E30f (SLM local + ensemble)", shape=note, fillcolor="#ffffff", fontsize=9];
+  { rank=sink; note; }
+  cfp -> note [style=invis];
+}

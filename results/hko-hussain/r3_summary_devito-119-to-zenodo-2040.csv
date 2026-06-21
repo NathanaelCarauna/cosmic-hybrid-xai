@@ -1,0 +1,2 @@
+n_classes,classifier,accuracy,kappa,mean_f1,cfp_mae,cfp_sa,wall_clock_s,train_dataset,eval_dataset
+4,c45,0.0,-0.0006,0.0,0.301,0.2681,33.911,devito-119,zenodo-2040

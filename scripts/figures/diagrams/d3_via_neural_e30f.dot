@@ -1,0 +1,26 @@
+// D3 — Via neural E30f (pipeline detalhado): SLM local + correção + ensemble.
+digraph e30f {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
+  nodesep=0.25; ranksep=0.55;
+
+  req [label="Requisito", fillcolor="#eeeeee", shape=note];
+  slm [label="SLM Qwen3-8B (local, GPU)\nnormalização → IR\nfew-shot limpo, temp 0", fillcolor="#dfeaf5"];
+  onto [label="Motor de regras\n(ontologia COSMIC)", fillcolor="#f5d9d3"];
+  corr [label="Correção paramétrica\nescalonada (calibrada no treino)", fillcolor="#e7eed9"];
+
+  bert [label="Regressor BERT–Ridge\n(embeddings)", fillcolor="#e7eed9"];
+
+  ens [label="Ensemble\nfinal = w·SLM_corr + (1−w)·BERT", fillcolor="#d9e7d2", shape=box, penwidth=1.4];
+  cfp [label="CFP", fillcolor="#e8e2f0", penwidth=1.4];
+
+  req -> slm -> onto -> corr -> ens;
+  req -> bert -> ens [style=dashed];
+  ens -> cfp;
+
+  note [label="Melhor acurácia no formato-casa (De Vito),\nmas degrada fora; sem trace de regra.", shape=note, fillcolor="#ffffff", fontsize=9];
+  { rank=sink; note; }
+  cfp -> note [style=invis];
+}

@@ -1,0 +1,11 @@
+Example 2 (Use Case, 4 CFP — simple search with read and display):
+Input: UC-SHOP-01 Search products. Customer searches the catalog by category, system displays matching products.
+Steps: 1. Customer selects Browse catalog | 2. System shows search form | 3. Customer enters category filter | 4. System queries product catalog | 5. System displays product list | Exception: System shows message if no products found
+
+Output (confirmation + error messages = 1 single Exit):
+{"functional_processes": [{"name": "Search products", "data_movements": [
+  {"type": "E", "data_group": "Category filter", "object_of_interest": "Product", "functional_user": "Customer", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Product catalog", "object_of_interest": "Product", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Product list", "object_of_interest": "Product", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Messages", "object_of_interest": "Product", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}

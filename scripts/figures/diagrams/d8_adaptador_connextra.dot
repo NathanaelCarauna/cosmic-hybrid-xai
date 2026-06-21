@@ -1,0 +1,33 @@
+// D8 — Adaptador de formato Connextra (E34a): converte uma história de usuário
+// em um ou mais pseudo-casos-de-uso canônicos, por regras ancoradas no protocolo
+// de anotação, sem tocar no motor de medição.
+digraph connextra {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
+  nodesep=0.28; ranksep=0.55;
+
+  us [label="História de usuário (Connextra)\n\"As a <role>, I want <action>,\nso that <benefit>\"", fillcolor="#eeeeee", shape=note];
+
+  parse [label="Extrai <role> e <action>\n(descarta <benefit>: contexto)", fillcolor="#dfeaf5"];
+
+  subgraph cluster_rules {
+    label="Regras do protocolo de medição";
+    fontname="Helvetica"; fontsize=10; color="#7aa6d6"; style="rounded"; bgcolor="#f3f8fd";
+    r1 [label="consulta -> Read + Exit", fillcolor="#d7e8d2", fontsize=10];
+    r2 [label="atualização / remoção ->\nRead prévio + Write", fillcolor="#d7e8d2", fontsize=10];
+    r3 [label="CRUD coordenado (create,\nupdate and delete) ->\nprocessos SEPARADOS", fillcolor="#d7e8d2", fontsize=10];
+    r4 [label="consulta coordenada (filter,\nsort) -> processo ÚNICO", fillcolor="#d7e8d2", fontsize=10];
+  }
+
+  pseudo [label="1..n pseudo-casos\nde uso canônicos\n(1 Entry + 1 Exit cada)", fillcolor="#fbe6cc"];
+  motor  [label="Motor de medição M2\n(ontologia, INVARIANTE)", fillcolor="#f5d9d3", penwidth=1.4];
+  cfp    [label="CFP = soma dos\nprocessos", fillcolor="#e8e2f0"];
+
+  us -> parse;
+  parse -> pseudo [label="aplica regras"];
+  r1 -> pseudo [style=dashed]; r2 -> pseudo [style=dashed];
+  r3 -> pseudo [style=dashed]; r4 -> pseudo [style=dashed];
+  pseudo -> motor -> cfp;
+}

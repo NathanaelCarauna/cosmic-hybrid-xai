@@ -1,0 +1,64 @@
+# Hybrid-XAI: Cross-Format COSMIC Functional Size Measurement
+
+Research artifact for the paper *"Symbolic AI versus LLMs for Cross-Format
+Software Requirements Measurement: A Five-Method COSMIC Benchmark."*
+
+> **Anonymized for double-blind review.** Author and institution information is
+> omitted and will be restored upon acceptance.
+
+## Overview
+
+A hybrid, explainable framework that measures COSMIC functional size
+(ISO/IEC 19761) from heterogeneous textual requirements. Format heterogeneity is
+handled by a per-format **normalization** layer (M1); a single,
+format-invariant **rule engine** (M2 — a 26-rule COSMIC ontology over a
+dependency parse) performs the measurement; an **explainability** module (M3)
+traces each counted CFP to the rule and the text span that produced it. Two
+instantiations are provided: a zero-cost local **symbolic** pipeline (E33d) and
+a **neural** pipeline (E30f — a local Small Language Model plus a BERT–Ridge
+ensemble).
+
+## Repository layout
+
+- `scripts/` — batch runners, ground-truth comparison, cross-method aggregation,
+  shared metrics, and dataset adapters
+- `models/hybrid-xai/` — the framework (normalizers, rule engine, pipeline, config)
+- `datasets/` — the user-story ground truth and the annotation artifacts of this
+  work (see **Data** below)
+- `results/` — summary tables backing the paper (heterogeneity matrix, bootstrap
+  confidence intervals, ablations, trivial baselines, per-replication summaries)
+- `docs/` — the annotation protocol and the AI-assisted annotation methodology
+- `tests/` — unit tests
+- `run_all.sh` — end-to-end reproduction entry point
+
+## Reproduction
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.lock.txt        # pinned versions
+python -m spacy download en_core_web_sm
+bash run_all.sh
+```
+
+Local SLM inference uses quantized GGUF models via `llama.cpp`; download them
+separately (see the framework config) — model binaries are **not** redistributed
+here. Runners that call a commercial LLM expect `OPENAI_API_KEY` in the
+environment.
+
+## Data
+
+- **User-story ground truth (this work).**
+  `datasets/user-stories-100-ground-truth-FINAL-v2.csv` (98 items) and the
+  supporting per-annotator files. The story *text* is sampled from the Dalpiaz
+  user-story collection (Mendeley Data, DOI 10.17632/7zbk8zsd8y.1) and is
+  redistributed here under its original license with attribution; the COSMIC
+  annotations (`cfp_ground_truth`) and the annotation protocol are contributions
+  of this work.
+- **External datasets (not redistributed).** The use-case, use-case-name and
+  sentence datasets, and the COSMIC Consortium case studies, are obtained from
+  their original sources; see the paper's references.
+
+## License
+
+Code is released under the MIT License (see `LICENSE`). The annotation data
+contributed by this work is released under CC BY 4.0.

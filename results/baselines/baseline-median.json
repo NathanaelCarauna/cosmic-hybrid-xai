@@ -1,0 +1,9 @@
+{
+  "variant": "baseline-median",
+  "mae": 1.4333,
+  "pred25": 0.4,
+  "sa": 0.0954,
+  "r2": -0.0525,
+  "n_fps": 30,
+  "note": "Train median CFP=4.0 applied to all holdout FPs"
+}
