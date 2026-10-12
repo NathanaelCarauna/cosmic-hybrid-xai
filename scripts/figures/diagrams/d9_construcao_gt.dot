@@ -2,7 +2,7 @@
 // pré-anotação por IA + dois anotadores humanos independentes -> adjudicação
 // humana às cegas -> GT de 98 itens, com kappa humano x humano reportado.
 digraph gt {
-  rankdir=LR;
+  rankdir=TB;
   fontname="Helvetica";
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
   edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];

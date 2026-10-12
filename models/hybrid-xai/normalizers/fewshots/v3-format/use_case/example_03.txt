@@ -1,0 +1,12 @@
+Example 3 (Use Case, 5 CFP — registration with duplicate check and write):
+Input: UC-AUTH-01 Register user account. User fills registration form with name, email and password. System checks for duplicate email, saves account, sends confirmation.
+Steps: 1. User selects Register | 2. System shows form | 3. User fills name, email, password | 4. System validates and checks email uniqueness | 5. System saves user account | 6. System sends confirmation email | Exception: System shows error if email already exists or data is invalid
+
+Output:
+{"functional_processes": [{"name": "Register user account", "data_movements": [
+  {"type": "E", "data_group": "Registration data", "object_of_interest": "User account", "functional_user": "User", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Existing accounts", "object_of_interest": "User account", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "User account record", "object_of_interest": "User account", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Confirmation email", "object_of_interest": "User account", "functional_user": "User", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Messages", "object_of_interest": "User account", "functional_user": "User", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}

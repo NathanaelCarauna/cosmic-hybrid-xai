@@ -69,6 +69,7 @@ def _load_hybrid_xai():
         ("models.hybrid_xai.normalizers.pipeline_normalizer", pkg_base / "normalizers" / "pipeline_normalizer.py"),
         ("models.hybrid_xai.normalizers.rewrite_normalizer", pkg_base / "normalizers" / "rewrite_normalizer.py"),
         ("models.hybrid_xai.normalizers.openai_normalizer", pkg_base / "normalizers" / "openai_normalizer.py"),
+        ("models.hybrid_xai.normalizers.format_aware_normalizer", pkg_base / "normalizers" / "format_aware_normalizer.py"),
     ]
     for name, path in mod_list:
         if not path.exists():
@@ -358,6 +359,14 @@ def create_normalizer(
     elif norm_type == "openai-slm":
         from models.hybrid_xai.normalizers.openai_normalizer import OpenAINormalizer
         return OpenAINormalizer(model=kwargs.get("openai_model", "gpt-4o-mini"))
+    elif norm_type == "openai-fmt":
+        from models.hybrid_xai.normalizers.format_aware_normalizer import (
+            FormatAwareOpenAINormalizer,
+        )
+        return FormatAwareOpenAINormalizer(
+            model=kwargs.get("openai_model", "gpt-4o-mini"),
+            force_bucket=kwargs.get("fewshot_bucket"),
+        )
     elif norm_type == "openai-tiered-correction":
         from models.hybrid_xai.normalizers.openai_normalizer import OpenAINormalizer
         from models.hybrid_xai.normalizers.ensemble_normalizer import TieredCorrectionNormalizer
@@ -554,7 +563,7 @@ def main():
                                  "rewrite-v2", "tiered-correction",
                                  "tiered-correction-opt",
                                  "smart-ensemble",
-                                 "openai-slm", "openai-tiered-correction",
+                                 "openai-slm", "openai-fmt", "openai-tiered-correction",
                                  "openai-strict-tiered",
                                  "self-consistency", "openai-self-consistency",
                                  "hierarchical", "hierarchical-tiered",
@@ -565,6 +574,10 @@ def main():
     parser.add_argument("--source-format", default=None, choices=["use_case", "sentence", "uc_name"])
     parser.add_argument("--results-dir", type=Path, default=BASE / "results" / "hybrid-xai")
     parser.add_argument("--max-fps", type=int, default=None)
+    parser.add_argument("--fewshot-bucket", default=None,
+                        help="Override few-shot bucket for --normalizer openai-fmt "
+                             "(use_case|sentence|connextra). Needed because "
+                             "--source-format has no user_story value.")
     parser.add_argument("--n-threads", type=int, default=6)
     parser.add_argument("--n-gpu-layers", type=int, default=0,
                         help="GPU layers for Vulkan/ROCm (0=CPU, 99=all on GPU)")
@@ -618,6 +631,7 @@ def main():
         args.normalizer, str(args.model_path) if args.model_path else None,
         args.n_threads, args.n_gpu_layers, args.chain_of_thought,
         n_ctx=args.n_ctx, openai_model=args.openai_model,
+        fewshot_bucket=args.fewshot_bucket,
     )
     engine = CosmicRuleEngine()
 

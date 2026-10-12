@@ -1,0 +1,8 @@
+Example 1 (Sentence, 2 CFP — simple subscription write):
+Input: Customer subscribes to price alerts for a product by entering the product code and target price.
+
+Output:
+{"functional_processes": [{"name": "Subscribe to price alert", "data_movements": [
+  {"type": "E", "data_group": "Subscription details", "object_of_interest": "Price alert", "functional_user": "Customer", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Subscription record", "object_of_interest": "Price alert", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false}
+]}]}

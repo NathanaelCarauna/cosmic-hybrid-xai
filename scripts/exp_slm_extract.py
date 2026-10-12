@@ -83,9 +83,17 @@ def main():
     from llama_cpp import Llama
     import spacy
     nlp = spacy.load("en_core_web_sm")
-    onto_mod = load_mod("cosmic_ontology", str(BASE/"models/hybrid-xai/ner_srl/cosmic_ontology.py"))
-    CosmicOntology = onto_mod.CosmicOntology
-    ActionTuple = onto_mod.ActionTuple
+    # cosmic_ontology.py agora importa language_profile via import relativo
+    # (from .language_profile import ...), então não pode ser carregado como
+    # módulo raiz avulso (load_mod). ner_ontology_pipeline.py já resolve isso
+    # com um shim de pacote (_load_ner_srl_submodule); carregá-lo aqui reusa
+    # essa resolução em vez de duplicar o mecanismo.
+    pipeline_mod = load_mod(
+        "ner_ontology_pipeline",
+        str(BASE/"models/hybrid-xai/ner_srl/ner_ontology_pipeline.py"),
+    )
+    CosmicOntology = pipeline_mod.CosmicOntology
+    ActionTuple = pipeline_mod.ActionTuple
     ontology = CosmicOntology(improved_dedup=True)  # dedup por grupo de dados
 
     llm = Llama(model_path=str(BASE/"models/gguf/Qwen3-8B-Q4_K_M.gguf"),

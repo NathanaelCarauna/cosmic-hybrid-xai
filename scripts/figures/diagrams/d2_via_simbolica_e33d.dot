@@ -1,10 +1,10 @@
 // D2 — Via simbólica E33d (pipeline detalhado). Sem NER (removido: decorativo).
 digraph e33d {
-  rankdir=LR;
+  rankdir=TB;
   fontname="Helvetica";
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
   edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
-  nodesep=0.25; ranksep=0.5;
+  nodesep=0.25; ranksep=0.35;
 
   uc [label="Requisito\n(caso de uso / sentença)", fillcolor="#eeeeee", shape=note];
   parse [label="Análise sintática\n(spaCy: dependências, lemas)", fillcolor="#dfeaf5"];
@@ -12,7 +12,7 @@ digraph e33d {
   srl [label="Papéis semânticos\n(escopo: só negação)", fillcolor="#dfeaf5"];
 
   subgraph cluster_onto {
-    label="Ontologia COSMIC · 26 regras identificadas (motor invariante)";
+    label="Ontologia COSMIC · 27 regras identificadas (motor invariante)";
     fontname="Helvetica"; fontsize=10; color="#b05a2a"; style="rounded"; bgcolor="#fbeee9";
     classif [label="Classificação por regra\n(ator·verbo·grupo de dados·\narmazenamento·interface)", fillcolor="#f5d9d3"];
     perfmt [label="Regras por formato:\nR_DISPLAY_IMPLICIT_READ (sentença)\nconserto valida-grava (UC)", fillcolor="#f7e3dc", fontsize=9];

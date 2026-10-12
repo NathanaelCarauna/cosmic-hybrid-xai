@@ -40,7 +40,10 @@ def build_pipeline(use_ner: bool):
     spec.loader.exec_module(mod)
     ner = BASE / "models" / "cosmic-ner" / "best"
     path = str(ner) if (use_ner and ner.exists()) else None
-    return mod.NerOntologyPipeline(ner_model_path=path)
+    # use_ner precisa ser passado explicitamente: desde a correção de 2026-06-16
+    # o default do construtor é False, e passar só o caminho do modelo não liga o
+    # NER — os dois braços da ablação rodavam SEM NER (o assert abaixo pega isso).
+    return mod.NerOntologyPipeline(ner_model_path=path, use_ner=use_ner)
 
 
 def sa_ci(results, n=10000, seed=42):
@@ -82,7 +85,12 @@ def run_zenodo(pipeline):
         fp_id = fp_file.stem
         if fp_id not in gt:
             continue
-        rec, _ = ev.measure_item(pipeline, fp_file.read_text(encoding="utf-8"), fp_id, "ZENODO")
+        # sentence_mode=True é a configuração canônica do formato de sentenças
+        # (habilita R_DISPLAY_IMPLICIT_READ). Sem ele a ablação rodava sobre uma
+        # configuração que não é a avaliada na dissertação, e o MAE não batia com
+        # o de results/ner-ontology/e33d_zenodo_summary.json.
+        rec, _ = ev.measure_item(pipeline, fp_file.read_text(encoding="utf-8"), fp_id,
+                                 "ZENODO", sentence_mode=True)
         rec["y_true"] = gt[fp_id]["y_true"]
         rec["error"] = rec["y_pred"] - rec["y_true"]
         rec["abs_error"] = abs(rec["error"])

@@ -1,0 +1,48 @@
+# Censo de alcançabilidade das regras do M2 (via simbólica E33d)
+
+Gerado por `scripts/rule_firing_census.py`. Configuração canônica da tese (`use_ner=False`).
+
+**24 de 27** regras de classificação disparam ao menos uma vez no corpus de avaliação.
+
+| regra | tipo | casos de uso (De Vito) | sentenças (Zenodo) | nomes de UC (Ochodek) | histórias (Dalpiaz) | total |
+|---|---|---|---|---|---|---|
+| `R0_NEGATED` | classificação | 10 | 22 | 0 | 0 | 32 |
+| `R10_CONFIRM_NO_DATA` | classificação | 9 | 6 | 0 | 0 | 15 |
+| `R10_PRESS_UI` | classificação | 0 | 0 | 0 | 0 | 0 |
+| `R10_USER_ENTRY` | classificação | 79 | 461 | 0 | 101 | 641 |
+| `R11_EXT_EXIT` | classificação | 14 | 348 | 0 | 0 | 362 |
+| `R12_BROWSE` | classificação | 0 | 0 | 0 | 0 | 0 |
+| `R13_EXT_SEND` | classificação | 0 | 0 | 0 | 0 | 0 |
+| `R14_SYS_FALLBACK_EXIT` | classificação | 7 | 69 | 0 | 20 | 96 |
+| `R14_SYS_FALLBACK_READ` | classificação | 0 | 17 | 0 | 4 | 21 |
+| `R14_SYS_UNKNOWN` | classificação | 6 | 3 | 0 | 3 | 12 |
+| `R15_USER_FALLBACK` | classificação | 21 | 345 | 0 | 2 | 368 |
+| `R1_BLANK_FORM` | classificação | 37 | 4 | 0 | 0 | 41 |
+| `R2_ERR_CONFIRM` | classificação | 78 | 83 | 0 | 39 | 200 |
+| `R3_RETURN_UI` | classificação | 4 | 4 | 0 | 0 | 8 |
+| `R3_SYS_EXIT` | classificação | 84 | 334 | 0 | 66 | 484 |
+| `R3_SYS_REQUEST` | classificação | 27 | 73 | 0 | 4 | 104 |
+| `R4_SYS_READ` | classificação | 71 | 29 | 0 | 45 | 145 |
+| `R5_SYS_WRITE` | classificação | 92 | 155 | 0 | 39 | 286 |
+| `R6_SYS_ENTRY` | classificação | 2 | 58 | 0 | 4 | 64 |
+| `R7_AMBIG_INTERNAL` | classificação | 5 | 14 | 0 | 0 | 19 |
+| `R7_AMBIG_PROCESS` | classificação | 0 | 5 | 0 | 0 | 5 |
+| `R7_AMBIG_READ` | classificação | 11 | 10 | 0 | 0 | 21 |
+| `R8_CLICK_DATA` | classificação | 26 | 55 | 0 | 0 | 81 |
+| `R8_CONTROL` | classificação | 128 | 667 | 0 | 0 | 795 |
+| `R9_SELECT_DATA` | classificação | 28 | 101 | 0 | 3 | 132 |
+| `R9_SELECT_UI` | classificação | 3 | 58 | 0 | 0 | 61 |
+| `R_DEFAULT` | classificação | 8 | 163 | 0 | 0 | 171 |
+| `R_DG_DEDUP` | pós-processamento | 15 | 11 | 0 | 0 | 26 |
+| `R_DISPLAY_IMPLICIT_READ` | pós-processamento | 0 | 185 | 0 | 0 | 185 |
+| `R_ERR_COLLAPSE` | pós-processamento | 99 | 14 | 0 | 0 | 113 |
+| `R_IMPLICIT_READ` | pós-processamento | 0 | 0 | 0 | 0 | 0 |
+| `R_MIN_SINGLE_STEP` | pós-processamento | 0 | 430 | 0 | 0 | 430 |
+| `R_TRIGGER_INJECT` | pós-processamento | 28 | 0 | 0 | 0 | 28 |
+| `R_UCNAME_LINEAR` | pós-processamento | 0 | 0 | 437 | 0 | 437 |
+
+## Regras que nunca disparam
+
+- `R10_PRESS_UI`
+- `R12_BROWSE`
+- `R13_EXT_SEND`

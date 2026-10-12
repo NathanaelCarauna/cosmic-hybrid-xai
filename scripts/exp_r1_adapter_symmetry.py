@@ -27,11 +27,14 @@ import csv
 from pathlib import Path
 
 import numpy as np
+from scipy.stats import wilcoxon
 
 BASE = Path(__file__).resolve().parent.parent
 rng = np.random.default_rng(42)
 
 GT = BASE / "results/cross-input/user-stories-98/ground_truth.csv"
+GT_V2 = BASE / "datasets/user-stories-100-ground-truth-FINAL-v2.csv"
+PER_ITEM = BASE / "results/error-analysis/per_item_all.csv"
 RAW = "results/cosmet/user-stories-98-r1-gpt-4-turbo-20260611T020933/batch_summary.csv"
 ADAPTED_GLOB = "results/cosmet/user-stories-98-r1-adapted-gpt-4-turbo-*"
 
@@ -69,15 +72,60 @@ def score(gt: dict, preds: dict) -> dict:
             "exatos": int((yt == yp).sum())}
 
 
+def clean_comparison() -> dict:
+    """Comparação LIMPA E34a x R1+adaptador sobre os MESMOS 78 itens de teste.
+
+    A leitura anterior confrontava o E34a de 98 itens (que inclui as 20 histórias
+    de desenvolvimento, cujo gabarito esteve visível na calibração do adaptador)
+    contra o R1 adaptado de 98. O par válido restringe AMBOS ao split de teste e
+    testa a diferença de forma pareada, em vez de comparar dois pontos com IC
+    largamente sobrepostos.
+    """
+    grows = list(csv.DictReader(GT.open()))
+    file2fp = {r["fp_file"]: r["fp_id"] for r in grows}
+    fp2us = {r["fp_id"]: r["us_id"] for r in grows}
+    gt = {r["fp_id"]: float(r["cfp_gt"]) for r in grows}
+    dev = {r["us_id"] for r in csv.DictReader(GT_V2.open())
+           if r["kappa_subset"] == "True"}
+    test = sorted(fp for fp in gt if fp2us[fp] not in dev)
+
+    adapted_dir = sorted(BASE.glob(ADAPTED_GLOB))[-1]
+    r1a = {file2fp[k]: v for k, v in
+           load_preds(adapted_dir / "batch_summary.csv").items()}
+    e34 = {r["item_id"]: float(r["y_pred"]) for r in csv.DictReader(PER_ITEM.open())
+           if r["method"] == "E34a" and r["dataset"] == "user-stories"}
+
+    e_ours = np.array([abs(gt[k] - e34[k]) for k in test])
+    e_r1 = np.array([abs(gt[k] - r1a[k]) for k in test])
+    stat, p = wilcoxon(e_ours, e_r1)
+    gt_, lt_ = 0, 0
+    for a in e_ours:
+        gt_ += int((a > e_r1).sum())
+        lt_ += int((a < e_r1).sum())
+    delta = (gt_ - lt_) / (len(e_ours) * len(e_r1))
+    d = e_ours - e_r1
+    return {
+        "n": len(test),
+        "ours": score({k: gt[k] for k in test}, {k: e34[k] for k in test}),
+        "r1_adapted": score({k: gt[k] for k in test}, {k: r1a[k] for k in test}),
+        "wilcoxon_p": round(float(p), 4), "cliffs_delta": round(float(delta), 3),
+        "identical_preds": int((d == 0).sum()),
+        "ours_better": int((d < 0).sum()), "r1_better": int((d > 0).sum()),
+    }
+
+
 def main() -> None:
     gt = load_gt()
     raw = score(gt, load_preds(BASE / RAW))
     adapted_dir = sorted(BASE.glob(ADAPTED_GLOB))[-1]
     adapted = score(gt, load_preds(adapted_dir / "batch_summary.csv"))
+    clean = clean_comparison()
 
     rows = [
         {"config": "R1 cru (Connextra)", **raw},
         {"config": "R1 + adaptador Connextra (M1)", **adapted},
+        {"config": "E34a (proposto) — teste-78", **clean["ours"]},
+        {"config": "R1 + adaptador — teste-78", **clean["r1_adapted"]},
     ]
     out = BASE / "results" / "asymmetry"
     out.mkdir(parents=True, exist_ok=True)
@@ -97,10 +145,23 @@ def main() -> None:
     md += ["",
            "Referência (matriz): E34a (nossa via simbólica + adaptador) MAE 0,459 / SA +0,364; "
            "E30f (via neural própria) MAE 1,490 / SA −1,065.", "",
+           "## Comparação limpa (mesmos 78 itens de teste)", "",
+           "Nota: os IC95 acima vêm do fluxo de reamostragem deste script; a célula "
+           "canônica do E34a-test78 é a de `results/final_statistical_table.md` "
+           "(SA +0,261 [−0,026; +0,486]). A diferença é de terceira decimal, própria "
+           "de dois fluxos bootstrap independentes, e o teste decisivo aqui é o "
+           "pareado, não a sobreposição de intervalos.", "",
+           f"Wilcoxon pareado E34a x R1+adaptador: p = {clean['wilcoxon_p']}; "
+           f"Cliff's delta = {clean['cliffs_delta']:+.3f}. "
+           f"Predições idênticas em {clean['identical_preds']}/{clean['n']} itens "
+           f"(E34a melhor em {clean['ours_better']}, pior em {clean['r1_better']}).", "",
            "Leitura: o adaptador (M1) leva o competidor R1 do colapso (SA −0,230) à SA "
-           "significativamente positiva (IC exclui zero) — a normalização é a alavanca "
-           "portável, independente do motor. O método proposto ainda supera o R1 adaptado, "
-           "preservando auditabilidade e custo nulo."]
+           "positiva — a normalização é a alavanca portável, independente do motor. "
+           "Sobre os MESMOS 78 itens de teste, porém, as duas configurações são "
+           "estatisticamente indistinguíveis: a diferença de MAE não sobrevive ao teste "
+           "pareado, e os dois motores produzem a MESMA contagem na larga maioria dos "
+           "itens. O que separa o método proposto do R1 adaptado, nesse formato, não é "
+           "acurácia — é auditabilidade e custo."]
     (out / "r1_adapter_symmetry.md").write_text("\n".join(md) + "\n")
 
     for r in rows:

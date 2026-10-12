@@ -1,0 +1,19 @@
+Example 5 (Use Case, 12 CFP — sales report with multiple data sources and export):
+Input: UC-REPORT-01 Generate sales report. Manager selects date range, region, and product category. System reads orders, products, customer data, regional tax rules, and discount rules. System displays summary table and chart. Manager selects export format; system saves export log.
+Steps: 1. Manager selects Generate report | 2. System shows report configuration form | 3. Manager fills date range, region, category | 4. System reads order records | 5. System reads product catalog | 6. System reads customer data | 7. System reads regional tax rules | 8. System reads discount rules | 9. System computes totals per region | 10. System displays summary table | 11. System displays chart | 12. System displays export options | 13. Manager selects export format | 14. System saves export log | Exception: System shows message if no data for selection
+
+Output (each DISTINCT data store = separate R, each DISTINCT displayed artifact = separate X):
+{"functional_processes": [{"name": "Generate sales report", "data_movements": [
+  {"type": "E", "data_group": "Report parameters", "object_of_interest": "Sales report", "functional_user": "Manager", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Order records", "object_of_interest": "Order", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Product catalog", "object_of_interest": "Product", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Customer data", "object_of_interest": "Customer", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Regional tax rules", "object_of_interest": "Tax", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Discount rules", "object_of_interest": "Discount", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Summary table", "object_of_interest": "Sales report", "functional_user": "Manager", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Chart", "object_of_interest": "Sales report", "functional_user": "Manager", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Export format options", "object_of_interest": "Sales report", "functional_user": "Manager", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "E", "data_group": "Export format selection", "object_of_interest": "Sales report", "functional_user": "Manager", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Export log", "object_of_interest": "Sales report", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Messages", "object_of_interest": "Sales report", "functional_user": "Manager", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}

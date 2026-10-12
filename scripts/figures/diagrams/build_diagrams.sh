@@ -8,7 +8,8 @@ DEST="$HERE/../../../../docs/estimativa-cosmic-tese/LATEX_DISSERTAÇÃO_MESTRADO
 
 echo "== Graphviz (D1-D4) =="
 for dot in d1_arquitetura_hybridxai d2_via_simbolica_e33d d3_via_neural_e30f d4_competidores \
-           d6_modelo_cosmic d7_representacao_intermediaria d8_adaptador_connextra d9_construcao_gt; do
+           d6_modelo_cosmic d7_representacao_intermediaria d8_adaptador_connextra d9_construcao_gt \
+           d10_dsr_ciclo; do
   dot -Tpdf "$HERE/$dot.dot" -o "$HERE/$dot.pdf"
   dot -Tpng -Gdpi=160 "$HERE/$dot.dot" -o "$HERE/$dot.png"
   cp "$HERE/$dot.pdf" "$DEST/$dot.pdf"

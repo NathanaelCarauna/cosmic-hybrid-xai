@@ -58,10 +58,34 @@ def extract_cfp_from_csv(path: Path) -> int | None:
 
 
 def extract_movements_from_csv(path: Path) -> dict | None:
-    """Extract per-sentence E/R/W/X counts from a COSMET CSV."""
+    """Extract per-sentence E/R/W/X counts from a COSMET CSV.
+
+    Soma a coluna CFP por tipo de movimento, e não os rótulos DM: linhas de
+    fluxo alternativo e mensagens agregadas trazem o rótulo mas CFP=0 ("It must
+    be counted only once"), e contá-las inflava a decomposição (ALBERGATE/FP55:
+    12 por rótulo contra os 10 da linha TOTAL do próprio arquivo). Rótulos
+    compostos ("Read and Exit", CFP=2) distribuem o CFP entre os tipos citados.
+    Sem coluna CFP, recai na contagem de rótulos com a regra do Exit agregado.
+    """
     try:
         df = pd.read_csv(path)
         dm_col = [c for c in df.columns if "DM" in c.upper()][0]
+        cfp_col = [c for c in df.columns if "CFP" in c.upper()]
+        if cfp_col:
+            keys = ["entry", "exit", "read", "write"]
+            counts = {k: 0 for k in keys}
+            for _, r in df.iterrows():
+                dm = str(r.get(dm_col, "")).strip().lower()
+                cfp = pd.to_numeric(r.get(cfp_col[0]), errors="coerce")
+                if pd.isna(cfp):
+                    continue
+                hits = [k for k in keys if k in dm]
+                if not hits:
+                    continue
+                for h in hits:
+                    counts[h] += int(cfp) // len(hits)
+            return counts
+
         movements = df[dm_col].dropna().tolist()
         entry = sum(1 for m in movements if "entry" in str(m).lower())
         read = sum(1 for m in movements if "read" in str(m).lower())

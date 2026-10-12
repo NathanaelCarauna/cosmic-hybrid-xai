@@ -189,28 +189,50 @@ def cell_e33d_devito():
     )
 
 
+def _mae_sa_from_per_item(path, yt_col="y_true", yp_col="y_pred"):
+    """MAE e SA a partir de um CSV por item, com a mesma convenção de preditor
+    trivial da tabela canônica (média): SA = 1 - MAE / mean|y - ȳ|."""
+    import csv as _csv
+
+    yt, yp = [], []
+    with (BASE / path).open(newline="") as fh:
+        for r in _csv.DictReader(fh):
+            yt.append(float(r[yt_col]))
+            yp.append(float(r[yp_col]))
+    if not yt:
+        return None, None, 0
+    n = len(yt)
+    mean_yt = sum(yt) / n
+    mae = sum(abs(a - b) for a, b in zip(yt, yp)) / n
+    mad = sum(abs(a - mean_yt) for a in yt) / n
+    return mae, (1 - mae / mad if mad > 0 else None), n
+
+
+# As duas células-manchete da via simbólica vêm da CONFIGURAÇÃO IMPLANTADA
+# citada na dissertação, e não dos sumários pré-otimização de 2026-06-10, que
+# permanecem versionados apenas para a taxonomia de erros. Mesma reconciliação
+# aplicada em scripts/build_final_statistical_table.py; sem ela, rerodar este
+# builder regride Ochodek para SA 0,045 ("indistinguível de zero") e contradiz
+# a Seção 5.3 da dissertação.
 def cell_e33d_zenodo():
-    path = RESULTS / "ner-ontology" / "e33d_zenodo_summary.json"
-    d = load_json(path)
-    if d is None:
+    mae, sa, n = _mae_sa_from_per_item(
+        "results/ner-ontology/e33d_zenodo_results.csv")
+    if mae is None:
         return empty_cell()
     return make_cell(
-        mae=_get(d, "mae"),
-        sa=_get(d, "sa"),
-        n=_get(d, "n_fps"),
+        mae=round(mae, 4), sa=round(sa, 4), n=n,
+        note="sentence rule R_DISPLAY_IMPLICIT_READ (held-out 70/30)",
     )
 
 
 def cell_e33d_ochodek():
-    path = RESULTS / "ner-ontology" / "e33d_ochodek_summary.json"
-    d = load_json(path)
-    if d is None:
+    mae, sa, n = _mae_sa_from_per_item(
+        "results/ner-ontology/ochodek_holdout_per_item.csv", "y_true", "y_pred")
+    if mae is None:
         return empty_cell()
     return make_cell(
-        mae=_get(d, "mae"),
-        sa=_get(d, "sa"),
-        n=_get(d, "n_fps"),
-        note="cross-dataset (NER/SRL fails on short UC names)",
+        mae=round(mae, 4), sa=round(sa, 4), n=n,
+        note="per-format UC-name estimator (held-out LOPO-CV)",
     )
 
 

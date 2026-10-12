@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from .language_profile import ENGLISH, LanguageProfile
+
 
 # ── Movement types ────────────────────────────────────────────────────
 
@@ -67,87 +69,9 @@ class MovementResult:
     is_error_confirmation: bool = False
 
 
-# ── Verb lexicons ─────────────────────────────────────────────────────
-
-_ENTRY_VERBS = frozenset({
-    "enter", "fill", "input", "submit", "select", "choose", "provide",
-    "inform", "type", "specify", "insert", "pick", "mark", "tick", "set",
-    "upload", "attach", "give", "pass", "indicate", "send", "signal",
-    "reply", "respond", "confirm", "import",
-    "approve", "accept", "reject", "vote", "receive", "deny",
-})
-
-_EXIT_VERBS = frozenset({
-    "display", "show", "list", "present", "output", "render", "print",
-    "exhibit", "generate", "produce", "report", "view", "visualize",
-    "summarize", "highlight", "notify", "ask", "request", "send",
-    "forward", "transmit", "return", "export", "emit", "publish",
-    "broadcast", "expose", "prompt", "warn", "alert",
-    "open", "redirect", "communicate", "transition",
-})
-
-_READ_VERBS = frozenset({
-    "search", "query", "fetch", "retrieve", "read", "find", "get", "load",
-    "obtain", "seek", "scan", "inspect", "locate", "filter", "access",
-    "look", "lookup", "consult", "extract", "pull",
-})
-
-_WRITE_VERBS = frozenset({
-    "save", "store", "write", "record", "persist", "update", "modify",
-    "delete", "remove", "create", "register", "add", "log", "archive",
-    "overwrite", "append", "erase", "empty", "clear", "change", "insert",
-    "alter", "approve", "accept", "reject", "deny", "assign",
-    "activate", "deactivate", "enable", "disable", "lock", "unlock",
-})
-
-_CONTROL_VERBS = frozenset({
-    "click", "navigate", "close", "cancel", "abort", "resume", "open",
-    "launch", "exit", "refresh", "undo", "go", "press", "browse",
-    "return",
-})
-
-_AMBIGUOUS_VERBS = frozenset({
-    "check", "validate", "verify", "process", "handle", "manage",
-    "execute", "perform", "run",
-})
-
-# ── Patterns ──────────────────────────────────────────────────────────
-
-_ERROR_RE = re.compile(
-    r"\b(error|fail|invalid|exception|warning|not found|unable|denied|"
-    r"reject|unsuccessful|alert|not valid|inconsistenc)\w*\b",
-    re.IGNORECASE,
-)
-_CONFIRM_RE = re.compile(
-    r"\b(confirm|success|complete|done|acknowledg|notification)\w*\b",
-    re.IGNORECASE,
-)
-_UI_RE = re.compile(
-    r"\b(button|menu|tab|screen|page|option|sub-option|link|form|icon|"
-    r"checkbox|dropdown|dialog|modal|window|panel|bar|interface|section)\b",
-    re.IGNORECASE,
-)
-_QUOTED_UI_RE = re.compile(r'["\u201c\u201d\u2018\u2019\'](Cancel|Back|OK|Close|Confirm|Save|Reset|Submit)["\u201c\u201d\u2018\u2019\']', re.IGNORECASE)
-_PERSIST_RE = re.compile(
-    r"\b(persistent storage|database|db|file|table|records?|storage|repository)\b",
-    re.IGNORECASE,
-)
-_BLANK_FORM_RE = re.compile(
-    r"\b(?:show|display|present|render)\w*\s+(?:a\s+)?(?:blank\s+)?(?:formatted?\s+)?(?:form|screen)\b"
-    r"(?!\s+containing)",
-    re.IGNORECASE,
-)
-_INCLUDE_UC_RE = re.compile(
-    r"include\s+the\s+use\s+case|resume\w*\s+at\s+step|"
-    r"(?:if\s+)?(?:at|in)\s+step\s+\d+\s+of\s+the\s+main|"
-    r"if\s+(at\s+|in\s+)?step\s+\d+.*use\s+case|"
-    r"the\s+use\s+case\s+\S+.*?\s+is\s+(initiated|started|included)|"
-    r"use\s+case\s+\S+.*?\s+is\s+(initiated|started|included)",
-    re.IGNORECASE,
-)
-
-_SYSTEM_NAMES = {"system", "the system"}
-
+# Léxicos de verbos, regexes e nomes de sistema agora vêm do LanguageProfile
+# injetado em CosmicOntology (ver __init__ e self.profile.* nos métodos abaixo).
+# O perfil ENGLISH em language_profile.py é a cópia verbatim destas constantes.
 
 # ── Ontology engine ──────────────────────────────────────────────────
 
@@ -165,9 +89,11 @@ class CosmicOntology:
     """
 
     def __init__(self, inject_implicit_reads: bool = False,
-                 improved_dedup: bool = False):
+                 improved_dedup: bool = False,
+                 profile: LanguageProfile = ENGLISH):
         self.inject_implicit_reads = inject_implicit_reads
         self.improved_dedup = improved_dedup
+        self.profile = profile
 
     def classify_actions(
         self,
@@ -187,11 +113,11 @@ class CosmicOntology:
         first_entry_found = False
 
         for action in actions:
-            if _INCLUDE_UC_RE.search(action.source_text):
+            if self.profile.include_uc_re.search(action.source_text):
                 continue
 
             actor = action.agent or primary_actor or "User"
-            is_system = actor.lower() in _SYSTEM_NAMES
+            is_system = self.profile.is_system_actor(actor)
 
             result = self._apply_rules(action, actor, is_system)
 
@@ -238,12 +164,10 @@ class CosmicOntology:
 
         return results
 
-    @staticmethod
-    def _normalize_dg_old(dg: str) -> str:
+    def _normalize_dg_old(self, dg: str) -> str:
         """Normalização canônica (rasa) — pré-correção."""
-        import re as _re
         s = dg.lower().strip()
-        s = _re.sub(r"^(the|a|an)\s+", "", s)
+        s = self.profile.article_re.sub("", s)
         return s
 
     def _normalize_dg(self, dg: str) -> str:
@@ -256,12 +180,16 @@ class CosmicOntology:
             return self._normalize_dg_old(dg)
         import re as _re
         s = dg.lower().strip()
-        s = _re.sub(r"^(the|a|an)\s+", "", s)
+        s = self.profile.article_re.sub("", s)
         s = _re.sub(r"\s+", " ", s).strip(" \t\n.,;:\"'()[]")
         toks = []
         for w in s.split(" "):
-            if len(w) > 4 and w.endswith("s") and not w.endswith(("ss", "us", "is")):
-                w = w[:-1]
+            if (
+                len(w) > 4
+                and w.endswith(self.profile.plural_suffix)
+                and not w.endswith(self.profile.plural_exceptions)
+            ):
+                w = w[: -len(self.profile.plural_suffix)]
             toks.append(w)
         return " ".join(toks)
 
@@ -292,12 +220,6 @@ class CosmicOntology:
                 seen.add(key)
                 deduped.append(r)
         return deduped
-
-    _DOMAIN_DATA_RE = re.compile(
-        r"\b(details?|list|results?|data|records?|information|status|"
-        r"configuration|settings?|profile|summary|history|report)\b",
-        re.IGNORECASE,
-    )
 
     def _inject_implicit_reads(self, results: list[MovementResult]) -> list[MovementResult]:
         """If a system Exit has no prior Read for the same data group, inject an implicit Read.
@@ -335,7 +257,7 @@ class CosmicOntology:
                     ndg not in _SKIP_DGS
                     and ndg not in read_dgs
                     and ndg not in entry_dgs
-                    and self._DOMAIN_DATA_RE.search(ndg)
+                    and self.profile.domain_data_re.search(ndg)
                 ):
                     implicit = MovementResult(
                         movement_type=CMovement.R,
@@ -360,15 +282,15 @@ class CosmicOntology:
         theme = action.theme
         entities = action.entities
 
-        has_persist = _PERSIST_RE.search(text) or any(
+        has_persist = self.profile.persist_re.search(text) or any(
             e.label == "PERSIST_STORE" for e in entities
         )
-        has_ui = _UI_RE.search(text) or _QUOTED_UI_RE.search(text) or any(
+        has_ui = self.profile.ui_re.search(text) or self.profile.quoted_ui_re.search(text) or any(
             e.label == "UI_ELEMENT" for e in entities
         )
         has_data_obj = any(e.label == "DATA_OBJ" for e in entities) or bool(theme)
-        is_error = _ERROR_RE.search(text)
-        is_confirm = _CONFIRM_RE.search(text)
+        is_error = self.profile.error_re.search(text)
+        is_confirm = self.profile.confirm_re.search(text)
 
         def mk(mv, dg, rule, reason, err_conf=False):
             return MovementResult(
@@ -398,20 +320,20 @@ class CosmicOntology:
             return mk_none("R0_NEGATED", f"Negated verb '{lemma}' — no data movement")
 
         # ── R1: System shows blank/empty form → No movement ────────────
-        if is_system and _BLANK_FORM_RE.search(text):
+        if is_system and self.profile.blank_form_re.search(text):
             return mk_none("R1_BLANK_FORM", "System shows blank form — no data (COSMIC Guide §3.5)")
 
         # ── R2: Error/confirmation message → single Exit ──────────
-        if is_system and (is_error or is_confirm) and lemma in (_EXIT_VERBS | {"display", "show"}):
+        if is_system and (is_error or is_confirm) and lemma in self.profile.exit_verbs:
             return mk(CMovement.X, "Messages", "R2_ERR_CONFIRM",
                        f"System error/confirm message → 1 Exit", err_conf=True)
 
         # ── R3: System display/show with domain data → Exit ──────
-        if is_system and lemma in _EXIT_VERBS:
-            if lemma in ("request", "send", "forward", "transmit"):
+        if is_system and lemma in self.profile.exit_verbs:
+            if lemma in self.profile.exit_external_request_verbs:
                 return mk(CMovement.X, theme, "R3_SYS_REQUEST",
                            f"System '{lemma}' to external actor → Exit")
-            if lemma == "return" and has_ui and not any(
+            if lemma in self.profile.exit_return_ui_verbs and has_ui and not any(
                 e.label == "DATA_OBJ" for e in entities
             ):
                 return mk_none("R3_RETURN_UI",
@@ -420,46 +342,46 @@ class CosmicOntology:
                        f"System '{lemma}' → Exit to functional user")
 
         # ── R4: System read/search from storage → Read ───────────
-        if is_system and lemma in _READ_VERBS:
+        if is_system and lemma in self.profile.read_verbs:
             return mk(CMovement.R, theme, "R4_SYS_READ",
                        f"System '{lemma}' → Read from persistent storage")
 
         # ── R5: System save/store/delete → Write ─────────────────
-        if is_system and lemma in _WRITE_VERBS:
+        if is_system and lemma in self.profile.write_verbs:
             return mk(CMovement.W, theme, "R5_SYS_WRITE",
                        f"System '{lemma}' → Write to persistent storage")
 
         # ── R6: System receives from external actor → Entry ──────
-        if is_system and lemma in _ENTRY_VERBS:
+        if is_system and lemma in self.profile.entry_verbs:
             return mk(CMovement.E, theme, "R6_SYS_ENTRY",
                        f"System receives '{lemma}' → Entry (from external FU)")
 
         # ── R7: Ambiguous verbs — context resolution ─────────────
-        if is_system and lemma in _AMBIGUOUS_VERBS:
+        if is_system and lemma in self.profile.ambiguous_verbs:
             if has_persist:
-                if lemma in ("check", "validate", "verify"):
+                if lemma in self.profile.ambiguous_read_verbs:
                     return mk(CMovement.R, theme, "R7_AMBIG_READ",
                                f"System '{lemma}' with storage reference → Read")
                 return mk(CMovement.R, theme, "R7_AMBIG_READ",
                            f"System '{lemma}' with persistence marker → Read")
-            if lemma in ("check", "validate", "verify"):
+            if lemma in self.profile.ambiguous_read_verbs:
                 return mk_none("R7_AMBIG_INTERNAL",
                                 f"System '{lemma}' without storage → internal validation, no movement")
-            if lemma in ("process", "handle", "manage", "execute", "perform", "run"):
+            if lemma in self.profile.ambiguous_process_verbs:
                 return mk_none("R7_AMBIG_PROCESS",
                                 f"System '{lemma}' → internal processing, no direct movement")
 
         # ── R8: User control action (click, navigate, press) → No movement ─
-        if not is_system and lemma in _CONTROL_VERBS:
-            if lemma in ("click", "press") and has_data_obj and not has_ui:
+        if not is_system and lemma in self.profile.control_verbs:
+            if lemma in self.profile.control_click_verbs and has_data_obj and not has_ui:
                 return mk(CMovement.E, theme, "R8_CLICK_DATA",
                            f"User clicks on domain data → Entry")
             return mk_none("R8_CONTROL",
                             f"User control '{lemma}' on UI → no data movement")
 
         # ── R9: User select/choose ────────────────────────────────
-        if not is_system and lemma in ("select", "choose"):
-            theme_is_ui = _UI_RE.search(theme) if theme else False
+        if not is_system and lemma in self.profile.entry_select_verbs:
+            theme_is_ui = self.profile.ui_re.search(theme) if theme else False
             if has_ui and (not has_data_obj or theme_is_ui):
                 return mk_none("R9_SELECT_UI",
                                 f"User selects UI element → no data movement")
@@ -470,28 +392,28 @@ class CosmicOntology:
                        f"User '{lemma}' domain data → Entry")
 
         # ── R10: User data entry (fill, submit, provide, etc.) → Entry
-        if not is_system and lemma in _ENTRY_VERBS:
-            if lemma == "press" and has_ui:
+        if not is_system and lemma in self.profile.entry_verbs:
+            if lemma in self.profile.control_click_verbs and has_ui:
                 return mk_none("R10_PRESS_UI",
                                 f"User presses button → no data movement")
-            if lemma in ("confirm",) and not has_data_obj:
+            if lemma in self.profile.entry_confirm_verbs and not has_data_obj:
                 return mk_none("R10_CONFIRM_NO_DATA",
                                 f"User confirms without data → no movement")
             return mk(CMovement.E, theme, "R10_USER_ENTRY",
                        f"User '{lemma}' → Entry")
 
         # ── R11: External actor displays/receives → Exit from system
-        if not is_system and lemma in _EXIT_VERBS:
+        if not is_system and lemma in self.profile.exit_verbs:
             return mk(CMovement.X, theme, "R11_EXT_EXIT",
                        f"Non-system actor '{actor}' receives/displays → Exit from system")
 
         # ── R12: User browsing results → No movement ─────────────
-        if not is_system and lemma == "browse":
+        if not is_system and lemma in self.profile.control_browse_verbs:
             return mk_none("R12_BROWSE",
                             f"User browsing → no data movement")
 
         # ── R13: External actor sends/signals → Entry ─────────────
-        if not is_system and lemma in ("send", "signal", "reply", "respond"):
+        if not is_system and lemma in self.profile.entry_external_send_verbs:
             return mk(CMovement.E, theme, "R13_EXT_SEND",
                        f"External actor '{lemma}' → Entry to system")
 

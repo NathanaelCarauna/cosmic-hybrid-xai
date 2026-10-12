@@ -1,0 +1,6 @@
+variante,n,mae,delta_mae,sa,exact,bias
+canônico (E33d implantado),119,0.9328,0.0,0.555,61,-0.2101
++ leitura implícita na exibição (global),119,0.9664,0.0336,0.5389,59,-0.1429
++ dedup por verbo+objeto,119,1.4706,0.5378,0.2983,42,1.0
++ injeção de leituras implícitas,119,1.042,0.1092,0.5028,54,0.0
++ dedup melhorada (semântica),119,0.9328,0.0,0.555,61,-0.2101

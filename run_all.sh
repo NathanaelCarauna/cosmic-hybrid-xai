@@ -80,6 +80,8 @@ run $PY scripts/error_analysis/collect_per_item.py
 run $PY scripts/movement_level_eval.py
 run $PY scripts/build_cost_benchmark.py
 run $PY scripts/build_final_statistical_table.py
+run $PY scripts/exp_pred25_all_cells.py
+run $PY scripts/build_consolidated_table.py
 run $PY scripts/figures/generate_canonical_figures.py
 run $PY scripts/m3_generate_materials.py
 

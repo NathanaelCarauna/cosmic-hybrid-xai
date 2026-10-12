@@ -1,0 +1,61 @@
+// D10 — Ciclo de engenharia do Design Science Research (Wieringa, 2014).
+// Cada caixa do ciclo de projeto traz o que esta pesquisa produziu nela e o
+// capítulo em que o resultado é relatado. Tracejado: fora do escopo.
+// Linhas curtas de propósito: a largura natural do grafo é o que fixa a escala
+// na página, e portanto o tamanho da fonte impressa.
+digraph dsr {
+  rankdir=TB;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=12, shape=box, style="rounded,filled", color="#33333322"];
+  edge [fontname="Helvetica", fontsize=10, color="#555555", arrowsize=0.7];
+  nodesep=0.30; ranksep=0.34;
+
+  subgraph cluster_design {
+    label="Ciclo de projeto (design cycle)";
+    fontname="Helvetica"; fontsize=11; color="#b05a2a"; style="rounded"; bgcolor="#fbeee9";
+
+    t1 [fillcolor="#dfeaf5", label=<
+      <table border="0" cellborder="0" cellspacing="0" cellpadding="1">
+        <tr><td align="left"><b>1 · Investigação do problema</b></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">RSL prévia: três gerações</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">técnicas, duas lacunas</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#8a6a55">Capítulos 1 e 2</font></td></tr>
+      </table>>];
+
+    t2 [fillcolor="#dfeaf5", label=<
+      <table border="0" cellborder="0" cellspacing="0" cellpadding="1">
+        <tr><td align="left"><b>2 · Projeto do tratamento</b></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">três camadas (M1, M2, M3);</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">mais de 60 configurações avaliadas,</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">das quais se retêm as vias E33d</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">e E30f e o adaptador E34a</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#8a6a55">Capítulo 3</font></td></tr>
+      </table>>];
+
+    t3 [fillcolor="#dfeaf5", label=<
+      <table border="0" cellborder="0" cellspacing="0" cellpadding="1">
+        <tr><td align="left"><b>3 · Validação do tratamento</b></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">matriz de 20 células; gabarito</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">de 98 histórias; 53 processos</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#444444">canônicos; M3 por métricas objetivas</font></td></tr>
+        <tr><td align="left"><font point-size="10" color="#8a6a55">Capítulos 4 e 5</font></td></tr>
+      </table>>];
+  }
+
+  subgraph cluster_fora {
+    label="Fora do escopo · Capítulo 6";
+    fontname="Helvetica"; fontsize=11; color="#aaaaaa"; style="rounded,dashed"; bgcolor="#f7f7f7";
+    t4 [label="4 · Implementação\ndo tratamento",
+        style="dashed,filled", fillcolor="#f2f2f2", fontcolor="#777777", fontsize=11];
+    t5 [label="5 · Avaliação da\nimplementação em uso",
+        style="dashed,filled", fillcolor="#f2f2f2", fontcolor="#777777", fontsize=11];
+    {rank=same; t4; t5;}
+  }
+
+  t1 -> t2;
+  t2 -> t3;
+  t3 -> t4 [style=dashed, color="#bbbbbb"];
+  t4 -> t5 [style=dashed, color="#bbbbbb"];
+  t3:e -> t2:e [label="reprojeto", constraint=false, style=dashed,
+                color="#b05a2a", fontcolor="#b05a2a"];
+}

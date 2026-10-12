@@ -2,7 +2,7 @@
 // Núcleo INVARIANTE (M2 motor de regras + M3 explicabilidade); apenas a
 // normalização (M1) é especializada por formato. Render: build_diagrams.sh
 digraph hybridxai {
-  rankdir=LR;
+  rankdir=TB;
   fontname="Helvetica";
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322", penwidth=1.1];
   edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
@@ -10,7 +10,7 @@ digraph hybridxai {
 
   in [label="Requisitos heterogêneos\n(casos de uso, sentenças,\nnomes de UC, histórias de usuário)", fillcolor="#eeeeee", shape=note];
 
-  m0 [label="M0 · Pré-processamento\ne detecção de formato", fillcolor="#dfeaf5"];
+  m0 [label="M0 · Pré-processamento\ne roteamento pelo formato DECLARADO", fillcolor="#dfeaf5"];
 
   subgraph cluster_m1 {
     label="M1 · Normalização semântica (especializada por FORMATO)";
@@ -23,7 +23,7 @@ digraph hybridxai {
 
   ir [label="Representação\nIntermediária (IR)\nator·ação·grupo de dados", fillcolor="#fbe6cc", shape=box];
 
-  m2 [label="M2 · Motor de medição COSMIC\nontologia de 26 regras\n(E/X/R/W) — INVARIANTE ao formato", fillcolor="#f5d9d3", penwidth=1.8, color="#b05a2a"];
+  m2 [label="M2 · Motor de medição COSMIC\nontologia de 27 regras\n(E/X/R/W) — INVARIANTE ao formato", fillcolor="#f5d9d3", penwidth=1.8, color="#b05a2a"];
 
   cfp [label="CFP\n(tamanho funcional)", fillcolor="#e8e2f0", shape=box, penwidth=1.4];
 

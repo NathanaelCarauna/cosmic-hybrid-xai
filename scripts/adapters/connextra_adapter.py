@@ -73,9 +73,169 @@ CONNEXTRA_RE = re.compile(
 # "create, update and delete X" / "add new X and edit existing X"
 COORD_SPLIT_RE = re.compile(r",\s*(?:and\s+)?|\s+and\s+|\s+or\s+", re.IGNORECASE)
 
+# Frame português: "Como (um/uma/o/a) <papel>, (eu) quero/gostaria de/preciso/
+# desejo/devo poder <ação>[, para que/a fim de/de modo que <benefício>]."
+CONNEXTRA_RE_PT = re.compile(
+    r"^\s*como\s+(?:um[a]?\s+|o\s+|a\s+)?(?P<role>[^,]+?)\s*,\s*"
+    r"(?:eu\s+)?(?:quero|gostaria\s+de|preciso|desejo|devo\s+poder)\s*"
+    r"(?:poder\s+)?(?P<action>.+?)"
+    r"(?:\s*,?\s*(?:para\s+que|a\s+fim\s+de|de\s+modo\s+que)\s+.+)?\s*\.?\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
 
-def _verb_class(verb: str) -> str:
+# "criar, atualizar e excluir X" / "filtrar e ordenar X"
+COORD_SPLIT_RE_PT = re.compile(r",\s*(?:e\s+)?|\s+e\s+|\s+ou\s+", re.IGNORECASE)
+
+_FRAMES = {"en": (CONNEXTRA_RE, COORD_SPLIT_RE),
+           "pt": (CONNEXTRA_RE_PT, COORD_SPLIT_RE_PT)}
+
+# Classes de verbo em português (mesmas famílias das inglesas, usadas para
+# selecionar o verbo/ator dos passos gerados quando lang == "pt").
+#
+# Correção de paridade de léxico: o inglês (CREATE_VERBS, UPDATE_VERBS,
+# DELETE_VERBS, READ_VERBS acima, linhas 28-40) cobre ~97 verbos nessas
+# quatro classes (as únicas que _verb_class/_steps_for_pt reconhecem para
+# português — send/manage/auth/compute do inglês, linhas 41-60, não têm
+# branch de geração de passos em português e por isso não entram aqui: um
+# verbo dessas classes cai no branch "generic" de _steps_for_pt, o mesmo
+# fallback que o próprio inglês usa para qualquer verbo fora de suas 8
+# classes, ex. "connect" em "As a parent, I want to be able to connect with
+# the staff in case of an emergency" -> datasets/pt-br/user-stories/FP034.txt
+# "entrar em contato com a equipe"). Os conjuntos abaixo traduzem a amplitude
+# INTEIRA de CREATE_VERBS/UPDATE_VERBS/DELETE_VERBS/READ_VERBS (cada verbo
+# comentado cita o verbo inglês espelhado); antes só ~20 verbos cobriam uma
+# fração pequena disso, e casos reais do corpus ficavam em "generic" por
+# omissão de tradução (não por serem estruturalmente genéricos): "indicar"
+# (mirror de "indicate", UPDATE_VERBS), "verificar" (mirror de "verify",
+# READ_VERBS), "especificar" (mirror de "specify", CREATE_VERBS), "avançar"
+# (mirror de "move", UPDATE_VERBS — fonte real: datasets/raw/
+# user-stories-dalpiaz/g02-federalspending.txt "I want to move on to round 2
+# of Homepage edits" == datasets/pt-br/user-stories/FP001.txt "eu quero
+# avançar para a rodada 2"), "saber" (mirror de "know", READ_VERBS).
+_CREATE_VERBS_PT = frozenset({
+    "criar",       # create
+    "cadastrar",   # register
+    "adicionar",   # add
+    "inserir",     # insert
+    "registrar",   # record
+    "submeter",    # submit
+    "postar",      # post
+    "publicar",    # publish
+    "importar",    # import
+    "anexar",      # attach
+    "atribuir",    # assign
+    "definir",     # set / define
+    "especificar",  # specify
+    "aplicar",     # apply
+    "agendar",     # schedule
+    "construir",   # build
+    "gerar",       # generate
+    "incluir",     # include
+    "fazer",       # make
+})
+_UPDATE_VERBS_PT = frozenset({
+    "atualizar",    # update
+    "editar",       # edit
+    "alterar",      # change
+    "modificar",    # modify
+    "renomear",     # rename
+    "mover",        # move
+    "avançar",      # move (on) — realização idiomática real do corpus
+    "reordenar",    # reorder
+    "configurar",   # configure
+    "ajustar",      # adjust
+    "customizar",   # customize
+    "personalizar",  # customize (sinônimo)
+    "habilitar",    # enable
+    "desabilitar",  # disable
+    "ativar",       # activate
+    "desativar",    # deactivate
+    "aprovar",      # approve
+    "rejeitar",     # reject
+    "marcar",       # mark
+    "sinalizar",    # flag
+    "mesclar",      # merge
+    "vincular",     # link
+    "associar",     # associate
+    "organizar",    # organize
+    "restaurar",    # restore
+    "redefinir",    # reset
+    "classificar",  # rate
+    "etiquetar",    # tag
+    "anotar",       # annotate
+    "corrigir",     # correct
+    "consertar",    # fix
+    "revisar",      # revise
+    "indicar",      # indicate
+})
+_DELETE_VERBS_PT = frozenset({
+    "excluir",       # delete
+    "remover",       # remove
+    "apagar",        # delete (sinônimo)
+    "deletar",       # delete (sinônimo)
+    "desmarcar",     # deselect
+    "desvincular",   # unlink
+    "cancelar",      # cancel
+    "limpar",        # clear
+    "desincorporar",  # deaccession
+})
+_QUERY_VERBS_PT = frozenset({
+    "consultar",       # query / consult / lookup
+    "buscar",          # search
+    "pesquisar",       # search (sinônimo)
+    "procurar",        # search (sinônimo)
+    "visualizar",      # view / visualize
+    "ver",             # see
+    "listar",          # list
+    "filtrar",         # filter
+    "ordenar",         # sort
+    "exportar",        # export
+    "acompanhar",      # track
+    "encontrar",       # find
+    "exibir",          # display
+    "mostrar",         # show
+    "navegar",         # browse
+    "olhar",           # look
+    "extrair",         # extract
+    "puxar",           # pull
+    "checar",          # check
+    "monitorar",       # monitor
+    "explorar",        # explore
+    "descobrir",       # discover
+    "observar",        # watch
+    "saber",           # know
+    "entender",        # understand
+    "identificar",     # identify
+    "comparar",        # compare
+    "verificar",       # verify
+    "selecionar",      # select
+    "baixar",          # download
+    "recuperar",       # retrieve
+    "analisar",        # assess / analyze
+    "avaliar",         # evaluate
+    "pré-visualizar",  # preview
+    "rastrear",        # trace
+    "determinar",      # determine
+    "conferir",        # review
+})
+# União derivada (mesmo padrão de ALL_ACTION_VERBS acima, linha 62-63: uma
+# constante calculada a partir das classes finas, não mantida à mão em
+# paralelo — evita as duas listas divergirem por esquecimento).
+_WRITE_VERBS_PT = _CREATE_VERBS_PT | _UPDATE_VERBS_PT | _DELETE_VERBS_PT
+
+
+def _verb_class(verb: str, lang: str = "en") -> str:
     v = verb.lower()
+    if lang == "pt":
+        if v in _DELETE_VERBS_PT:
+            return "delete"
+        if v in _UPDATE_VERBS_PT:
+            return "update"
+        if v in _QUERY_VERBS_PT:
+            return "read"
+        if v in _CREATE_VERBS_PT:
+            return "create"
+        return "generic"
     if v in MANAGE_VERBS:
         return "manage"
     if v in AUTH_VERBS:
@@ -95,7 +255,7 @@ def _verb_class(verb: str) -> str:
     return "generic"
 
 
-def _split_subactions(action: str) -> list[tuple[str, str]]:
+def _split_subactions(action: str, lang: str = "en") -> list[tuple[str, str]]:
     """Divide a cláusula de ação em sub-ações (verbo, objeto).
 
     Trata coordenação de verbos com objeto compartilhado ("create, update and
@@ -107,10 +267,16 @@ def _split_subactions(action: str) -> list[tuple[str, str]]:
     if not words:
         return []
 
-    # Coordenação exclusivamente por "or" = caminhos alternativos do MESMO
-    # processo funcional (um único evento de gatilho) — não decompõe.
-    if re.search(r"\bor\b", action, re.IGNORECASE) and not re.search(
-            r",|\band\b", action, re.IGNORECASE):
+    coord_re = COORD_SPLIT_RE_PT if lang == "pt" else COORD_SPLIT_RE
+    all_action_verbs = ((_WRITE_VERBS_PT | _QUERY_VERBS_PT) if lang == "pt"
+                        else ALL_ACTION_VERBS)
+    and_word = r"e" if lang == "pt" else r"and"
+    or_word = r"ou" if lang == "pt" else r"or"
+
+    # Coordenação exclusivamente por "or"/"ou" = caminhos alternativos do
+    # MESMO processo funcional (um único evento de gatilho) — não decompõe.
+    if re.search(rf"\b{or_word}\b", action, re.IGNORECASE) and not re.search(
+            rf",|\b{and_word}\b", action, re.IGNORECASE):
         first = re.split(r"\s+", action, 1)
         verb = first[0]
         obj = first[1].strip() if len(first) > 1 else "the request"
@@ -119,17 +285,18 @@ def _split_subactions(action: str) -> list[tuple[str, str]]:
     # Caso 1: verbos coordenados no início com objeto compartilhado
     # "create, update and delete <obj>"
     m = re.match(
-        r"^(\w+)\s*,\s*(\w+),?\s+and\s+(\w+)\s+(.+)$", action, re.IGNORECASE
+        rf"^(\w+)\s*,\s*(\w+),?\s+{and_word}\s+(\w+)\s+(.+)$", action,
+        re.IGNORECASE,
     )
-    if m and all(_verb_class(v) != "generic" or v.lower() in ALL_ACTION_VERBS
+    if m and all(_verb_class(v, lang) != "generic" or v.lower() in all_action_verbs
                  for v in (m.group(1), m.group(2), m.group(3))):
         verbs = [m.group(1), m.group(2), m.group(3)]
-        if all(v.lower() in ALL_ACTION_VERBS for v in verbs):
+        if all(v.lower() in all_action_verbs for v in verbs):
             obj = m.group(4).strip()
             return [(v, obj) for v in verbs]
 
     # Caso 2: VPs coordenadas — "v1 obj1 and v2 obj2" (cada parte inicia com verbo)
-    parts = COORD_SPLIT_RE.split(action)
+    parts = coord_re.split(action)
     if len(parts) > 1:
         sub = []
         for p in parts:
@@ -138,12 +305,12 @@ def _split_subactions(action: str) -> list[tuple[str, str]]:
                 continue
             first = re.split(r"\s+", p, 1)
             v = first[0].lower()
-            if v in ALL_ACTION_VERBS and len(first) > 1:
+            if v in all_action_verbs and len(first) > 1:
                 sub.append((first[0], first[1].strip()))
             elif sub:
                 # fragmento sem verbo: anexa ao objeto anterior
                 pv, po = sub[-1]
-                sub[-1] = (pv, f"{po} and {p}")
+                sub[-1] = (pv, f"{po} {and_word} {p}")
             else:
                 sub = []
                 break
@@ -157,21 +324,66 @@ def _split_subactions(action: str) -> list[tuple[str, str]]:
     return [(verb, obj)]
 
 
-def _clean_obj(obj: str, max_words: int = 8) -> str:
+def _clean_obj(obj: str, max_words: int = 8, lang: str = "en") -> str:
     """Objeto curto para data group (remove subordinadas longas)."""
     obj = re.sub(r"\s*\(.*?\)\s*", " ", obj)
-    obj = re.split(r"\s+(?:so\s+that|when|if|because|in\s+order\s+to)\s+",
-                   obj, 1, re.IGNORECASE)[0]
+    if lang == "pt":
+        obj = re.split(
+            r"\s+(?:para\s+que|a\s+fim\s+de|de\s+modo\s+que|quando|se|porque)\s+",
+            obj, 1, re.IGNORECASE)[0]
+    else:
+        obj = re.split(r"\s+(?:so\s+that|when|if|because|in\s+order\s+to)\s+",
+                       obj, 1, re.IGNORECASE)[0]
     words = obj.strip().rstrip(".").split()
-    return " ".join(words[:max_words]) if words else "the data"
+    default = "os dados" if lang == "pt" else "the data"
+    return " ".join(words[:max_words]) if words else default
 
 
-def _steps_for(role: str, verb: str, obj: str, idx: int) -> list[str]:
+def _steps_for_pt(role: str, verb: str, obj: str, vc: str, o: str, tag: str) -> list[str]:
+    """Gera passos UC canônicos em português para uma sub-ação.
+
+    Vocabulário fixo (contrato com a Task 9 / léxicos PT): `informar` para
+    Entry (dado do usuário), `consultar` para Read, `exibir` para Exit,
+    `gravar` para Write. Ator do sistema: `Sistema`.
+    """
+    steps: list[str] = []
+    if vc == "read":
+        # Regra 4.3: E (critérios) + R (ler) + X (exibir)
+        steps.append(f"{role} informa os critérios de busca de {o}")
+        steps.append(f"Sistema consulta {o} na base de dados")
+        steps.append(f"Sistema exibe {o} para {role}")
+    elif vc == "create":
+        # Passo 5: criar → Write; Passo 2/3: Entry gatilho + Exit confirmação
+        steps.append(f"{role} informa os dados de {o}")
+        steps.append(f"Sistema grava o registro de {o} na base de dados")
+        steps.append(f"Sistema exibe a confirmação de {tag}")
+    elif vc == "update":
+        # Passo 4: ler registro atual antes de modificar
+        steps.append(f"{role} informa os dados atualizados de {o}")
+        steps.append(f"Sistema consulta o {o} atual na base de dados")
+        steps.append(f"Sistema grava o {o} atualizado na base de dados")
+        steps.append(f"Sistema exibe a confirmação de {tag}")
+    elif vc == "delete":
+        steps.append(f"{role} informa os dados de {o} para exclusão")
+        steps.append(f"Sistema consulta o registro de {o} na base de dados")
+        steps.append(f"Sistema grava a exclusão do registro de {o} na base de dados")
+        steps.append(f"Sistema exibe a confirmação de {tag}")
+    else:
+        # genérico: processo mínimo (Entry gatilho + ação crua + Exit resultado)
+        steps.append(f"{role} informa a solicitação de {verb} {o}")
+        steps.append(f"Sistema {verb} {o}")
+        steps.append(f"Sistema exibe o resultado de {tag}")
+    return steps
+
+
+def _steps_for(role: str, verb: str, obj: str, idx: int, lang: str = "en") -> list[str]:
     """Gera passos UC canônicos para uma sub-ação, conforme protocolo §3-§4."""
-    vc = _verb_class(verb)
-    o = _clean_obj(obj)
+    vc = _verb_class(verb, lang)
+    o = _clean_obj(obj, lang=lang)
     tag = f"{verb.lower()} {o}"  # data groups distintos por processo (anti-dedup)
-    role = role.strip() or "User"
+    role = role.strip() or ("Usuário" if lang == "pt" else "User")
+    if lang == "pt":
+        return _steps_for_pt(role, verb, obj, vc, o, tag)
     steps: list[str] = []
     if vc == "read":
         # Regra 4.3: E (critérios) + R (ler) + X (exibir)
@@ -225,7 +437,8 @@ def _steps_for(role: str, verb: str, obj: str, idx: int) -> list[str]:
 
 
 def _build_uc(text: str, fp_id: str, role: str,
-              subactions: list[tuple[str, str]]) -> str:
+              subactions: list[tuple[str, str]], lang: str = "en") -> str:
+    system_actor = "Sistema" if lang == "pt" else "System"
     lines = [
         "ID",
         f"{fp_id}\t{text[:60]}",
@@ -234,17 +447,17 @@ def _build_uc(text: str, fp_id: str, role: str,
     ]
     n = 0
     for i, (verb, obj) in enumerate(subactions):
-        for step in _steps_for(role, verb, obj, i):
+        for step in _steps_for(role, verb, obj, i, lang):
             n += 1
-            actor = role if step.lower().startswith(role.lower()) else "System"
+            actor = role if step.lower().startswith(role.lower()) else system_actor
             body = (step[len(role):].strip()
                     if step.lower().startswith(role.lower())
-                    else step[len("System"):].strip())
+                    else step[len(system_actor):].strip())
             lines.append(f"{n}\t{actor}\t{body}")
     return "\n".join(lines) + "\n"
 
 
-def connextra_to_ucs(text: str, fp_id: str) -> list[str] | None:
+def connextra_to_ucs(text: str, fp_id: str, lang: str = "en") -> list[str] | None:
     """Converte uma user story Connextra em pseudo-UCs (um por processo
     funcional). None se o texto não casar com o frame Connextra.
 
@@ -253,17 +466,21 @@ def connextra_to_ucs(text: str, fp_id: str) -> list[str] | None:
     isolamento (Entry de gatilho, confirmação e dedup próprios) e somados.
     Coordenação puramente de leitura (ex.: "filter, sort and search") é UM
     processo (regra 4.3: critérios variáveis ainda são 1 grupo de dados).
+
+    `lang`: "en" (padrão, frame Connextra clássico) ou "pt" (frame
+    "Como um <papel>, quero <ação>, para que <benefício>").
     """
-    m = CONNEXTRA_RE.match(text.strip())
+    frame_re, _coord_re = _FRAMES[lang]
+    m = frame_re.match(text.strip())
     if not m:
         return None
     role = m.group("role").strip()
     action = m.group("action").strip()
-    subactions = _split_subactions(action)
+    subactions = _split_subactions(action, lang)
     if not subactions:
         return None
 
-    classes = [_verb_class(v) for v, _ in subactions]
+    classes = [_verb_class(v, lang) for v, _ in subactions]
     if len(subactions) > 1 and all(c in ("read", "compute") for c in classes):
         # coordenação de consulta/análise → um único processo (regra 4.3:
         # critérios variáveis ainda são 1 grupo de dados de busca)
@@ -276,13 +493,13 @@ def connextra_to_ucs(text: str, fp_id: str) -> list[str] | None:
     if len(subactions) > 1:
         # processos funcionais separados (regra 4.6)
         return [
-            _build_uc(text, f"{fp_id}-p{i+1}", role, [sa])
+            _build_uc(text, f"{fp_id}-p{i+1}", role, [sa], lang)
             for i, sa in enumerate(subactions)
         ]
-    return [_build_uc(text, fp_id, role, subactions)]
+    return [_build_uc(text, fp_id, role, subactions, lang)]
 
 
-def connextra_to_uc(text: str, fp_id: str) -> str | None:
+def connextra_to_uc(text: str, fp_id: str, lang: str = "en") -> str | None:
     """Compat: retorna o primeiro UC (uso simples, sem decomposição)."""
-    ucs = connextra_to_ucs(text, fp_id)
+    ucs = connextra_to_ucs(text, fp_id, lang)
     return ucs[0] if ucs else None

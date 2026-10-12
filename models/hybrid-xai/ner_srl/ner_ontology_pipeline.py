@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import sys
+import types
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -31,18 +32,54 @@ def _load_module(name: str, path: str):
     return mod
 
 
-_srl_mod = _load_module(
-    "srl_extractor",
-    str(Path(__file__).parent / "srl_extractor.py"),
-)
-_decomp_mod = _load_module(
-    "compound_decomposer",
-    str(Path(__file__).parent / "compound_decomposer.py"),
-)
-_onto_mod = _load_module(
-    "cosmic_ontology",
-    str(Path(__file__).parent / "cosmic_ontology.py"),
-)
+def _load_ner_srl_submodule(mod_name: str, register_bare_alias: bool = False):
+    """Load a submodule of ner_srl/ that uses a relative import.
+
+    `models/hybrid-xai/` has a hyphen, so it can't be a dotted Python
+    package: this file (and every script in the repo) loads its siblings
+    ad hoc via `_load_module`, which executes each file as a rootless
+    module with no parent package. That breaks `from .language_profile
+    import ...` in srl_extractor.py/compound_decomposer.py, because a
+    relative import needs a real package registered in sys.modules.
+
+    Fix: register a lightweight synthetic package object (its `__path__`
+    pointed at this same directory) so the standard import machinery can
+    resolve the relative import on its own. No other behavior changes.
+
+    The synthetic package is deliberately registered under `_ner_srl_shim`
+    and NOT under `ner_srl` — `ner_srl` is the name of the *real* package
+    (models/hybrid-xai/ner_srl/__init__.py, which does
+    `from .srl_extractor import SRLExtractor, ...`). If the shim used that
+    same name, it would permanently occupy `sys.modules["ner_srl"]` with an
+    empty stub that never runs `__init__.py`; a later `import ner_srl` or
+    `from ner_srl import SRLExtractor` in the same process would silently
+    hit the incomplete stub from cache and fail with an obscure
+    `AttributeError` instead of importing the real package. Using a
+    distinct name means the shim can never shadow it.
+
+    register_bare_alias additionally registers `mod_name` itself (e.g.
+    "compound_decomposer") in sys.modules, for backward-compatible bare
+    `from compound_decomposer import ...` style imports elsewhere in this
+    file. Only pass True when there's a confirmed bare-import consumer —
+    otherwise this would resurrect the same shadowing risk for that name.
+    """
+    pkg_name = "_ner_srl_shim"
+    if pkg_name not in sys.modules:
+        pkg_dir = Path(__file__).resolve().parent
+        pkg_mod = types.ModuleType(pkg_name)
+        pkg_mod.__path__ = [str(pkg_dir)]
+        pkg_mod.__package__ = pkg_name
+        sys.modules[pkg_name] = pkg_mod
+
+    mod = importlib.import_module(f"{pkg_name}.{mod_name}")
+    if register_bare_alias:
+        sys.modules.setdefault(mod_name, mod)
+    return mod
+
+
+_srl_mod = _load_ner_srl_submodule("srl_extractor")
+_decomp_mod = _load_ner_srl_submodule("compound_decomposer", register_bare_alias=True)
+_onto_mod = _load_ner_srl_submodule("cosmic_ontology")
 _ucname_mod = _load_module(
     "ucname_estimator",
     str(Path(__file__).parent / "ucname_estimator.py"),
@@ -55,11 +92,8 @@ ActionTuple = _onto_mod.ActionTuple
 CosmicEntity = _onto_mod.CosmicEntity
 MovementResult = _onto_mod.MovementResult
 ucname_estimate = _ucname_mod.estimate
-
-_ALL_KNOWN_VERB_LEMMAS = (
-    _onto_mod._ENTRY_VERBS | _onto_mod._EXIT_VERBS | _onto_mod._READ_VERBS
-    | _onto_mod._WRITE_VERBS | _onto_mod._CONTROL_VERBS | _onto_mod._AMBIGUOUS_VERBS
-)
+LanguageProfile = _onto_mod.LanguageProfile
+ENGLISH = _onto_mod.ENGLISH
 
 
 @dataclass
@@ -72,60 +106,16 @@ class PipelineResult:
     n_reads: int = 0
     n_writes: int = 0
     n_exits: int = 0
+    # Sinal de COMPLETUDE para a confiança (só no caminho do produto,
+    # infer_implicit=True): True se o verbo de ação casou com uma classe
+    # conhecida; False se havia verbo mas nenhum casou (motor "chutando" o
+    # processo); None se não houve verbo ou o bloco não rodou. None => neutro.
+    action_recognized: bool | None = None
 
     @property
     def movement_breakdown(self) -> dict[str, int]:
         return {"E": self.n_entries, "R": self.n_reads, "W": self.n_writes, "X": self.n_exits}
 
-
-_SYSTEM_ACTORS = {"system", "the system"}
-
-_RESUME_RE = re.compile(
-    r"resumes?\s+(at\s+)?step|include\s+the\s+use\s+case|"
-    r"(?:if\s+)?(?:at|in)\s+step\s+\d+\s+of\s+the\s+main|"
-    r"if\s+(?:at\s+|in\s+)?step\s+\d+|"
-    r"the\s+use\s+case\s+\S+.*?\s+is\s+(initiated|started|included)|"
-    r"use\s+case\s+\S+.*?\s+is\s+(initiated|started|included)",
-    re.IGNORECASE,
-)
-
-# Padrão "valida/checa ... e grava/salva X" (conserto de cancelamento, alta precisão).
-# Verbo de validação seguido (na MESMA sentença, sem ponto) de verbo de escrita.
-_VALIDATE_WRITE_RE = re.compile(
-    r"\b(?:check|checks|checked|validate|validates|validated|verif\w+|ensure|ensures)\b"
-    r"[^.]*\b(?:record|records|recorded|save|saves|saved|store|stores|stored|"
-    r"persist\w*|registers?|registered)\b",
-    re.IGNORECASE,
-)
-_WRITE_OBJ_RE = re.compile(
-    r"\b(?:record|records|recorded|save|saves|saved|store|stores|stored|"
-    r"persist\w*|registers?|registered)\b\s+"
-    r"(?:the\s+|a\s+|an\s+|new\s+)*([a-z][\w'\- ]*?)"
-    r"(?:\s+(?:in|to|into|on)\b|[.,;:]|$)",
-    re.IGNORECASE,
-)
-
-# Read implícito na exibição (escopo: formato de SENTENÇA ÚNICA, sentence_mode).
-# Princípio COSMIC: exibir um grupo de dados ARMAZENADO exige um Read antes do
-# Exit. Numa sentença isolada (cada uma é um processo funcional próprio, sem
-# Entry/Read anterior no mesmo processo) esse Read precisa ser contado; num UC
-# multi-passo o dado pode já ter sido lido/digitado antes — por isso a regra é
-# gateada por sentence_mode (não dispara em De Vito). Validada held-out (Zenodo
-# 70/30, seed 42): MAE 0,374→0,345, SA +0,091→+0,161. Ver
-# resultados-otimizacao-zenodo-sentencas.md.
-_DISPLAY_READ_RE = re.compile(
-    r"\b(?:show|shows|display|displays|displayed|list|lists|listed|"
-    r"present|presents)\b",
-    re.IGNORECASE,
-)
-# Objetos que NÃO são grupo de dados armazenado (mensagem/controle/artefato
-# recém-gerado) — exibi-los é só Exit, sem Read. Excluem falsos positivos.
-_DISPLAY_MSG_RE = re.compile(
-    r"\b(?:message|notification|alert|confirmation|error|warning|popup|pop-up|"
-    r"page|button|interface|tab|menu|screen|dialog|email|e-mail|homepage|"
-    r"home\s+page|code|proof)\b",
-    re.IGNORECASE,
-)
 
 _SHORT_INPUT_MAX_TOKENS = 10
 
@@ -156,12 +146,14 @@ class NerOntologyPipeline:
     def __init__(self, ner_model_path: Optional[str] = None,
                  use_ner: bool = False, use_short_input_estimate: bool = True,
                  inject_implicit_reads: bool = False, improved_dedup: bool = False,
-                 dedup_by_object: bool = False, fix_validate_write: bool = True):
+                 dedup_by_object: bool = False, fix_validate_write: bool = True,
+                 profile: LanguageProfile = ENGLISH):
         # use_ner default False: a ablação (achado-ner-decorativo.md) mostrou que
         # o NER treinado NÃO altera o CFP (a ontologia, com regex de persistência/
         # UI + spaCy, faz o trabalho); desligá-lo é idêntico ou marginalmente
         # melhor e mais simples/rápido. use_ner=True ainda disponível p/ reprodução.
-        self.nlp = spacy.load("en_core_web_sm")
+        self.profile = profile
+        self.nlp = spacy.load(profile.spacy_model)
         self.use_short_input_estimate = use_short_input_estimate
         # dedup_by_object: dentro de um passo, deduplica acoes por (verbo, objeto)
         # em vez de so verbo. Corrige a subcontagem de Writes em passos com
@@ -186,15 +178,17 @@ class NerOntologyPipeline:
         else:
             self.ner_nlp = None
 
-        self.srl = SRLExtractor(nlp=self.nlp)
-        self.decomposer = CompoundDecomposer(nlp=self.nlp)
+        self.srl = SRLExtractor(nlp=self.nlp, profile=profile)
+        self.decomposer = CompoundDecomposer(nlp=self.nlp, profile=profile)
         self.ontology = CosmicOntology(
             inject_implicit_reads=inject_implicit_reads,
-            improved_dedup=improved_dedup)
+            improved_dedup=improved_dedup,
+            profile=profile)
 
     def measure(self, text: str, fp_id: str = "",
                 uc_name: bool = False,
-                sentence_mode: bool = False) -> PipelineResult:
+                sentence_mode: bool = False,
+                infer_implicit: bool = False) -> PipelineResult:
         """Measure COSMIC CFP for a requirement text.
 
         uc_name=True roteia para o estimador per-formato de NOMES DE CASO DE USO
@@ -219,7 +213,7 @@ class NerOntologyPipeline:
         for (step_id, actor, action_text), section in all_steps:
             if not action_text:
                 continue
-            if _RESUME_RE.search(action_text):
+            if self.profile.resume_re.search(action_text):
                 continue
 
             effective_actor = actor or primary_actor or "User"
@@ -232,7 +226,7 @@ class NerOntologyPipeline:
                     continue
 
             atoms = self.decomposer.decompose(action_text)
-            atoms = self._apply_lemma_fallback(atoms, action_text)
+            atoms = self._apply_lemma_fallback(atoms, action_text, infer_implicit)
 
             srl_roles = self.srl.extract_roles(action_text)
             ner_entities = self._run_ner(action_text) if self.ner_nlp else []
@@ -290,8 +284,8 @@ class NerOntologyPipeline:
         if (sentence_mode
                 and any(m.movement_type.value == "X" for m in active)
                 and not any(m.movement_type.value == "R" for m in active)
-                and _DISPLAY_READ_RE.search(text)
-                and not _DISPLAY_MSG_RE.search(text)):
+                and self.profile.display_read_re.search(text)
+                and not self.profile.display_msg_re.search(text)):
             exit_dg = next((m.data_group for m in active
                             if m.movement_type.value == "X"), "displayed_data")
             read_mov = MovementResult(
@@ -310,6 +304,87 @@ class NerOntologyPipeline:
             active.append(read_mov)
             cfp += 1
 
+        # Inferência de movimentos IMPLÍCITOS (caminho de insumo pobre do produto:
+        # descrição solta, processo de 1 passo). O COSMIC conta os movimentos que a
+        # semântica do processo implica: uma escrita implica a ENTRADA do dado; uma
+        # leitura implica a SAÍDA (o dado lido é devolvido); e um Exit de dado
+        # armazenado implica um Read prévio. Só completa o PAR quando um lado existe
+        # e o complemento falta (não infla processo já rico). Gated em infer_implicit
+        # (a fachada do produto liga; as avaliações da tese NÃO → intocadas) e restrito
+        # a processo de 1 passo (não mexe em UC multi-passo explícito → De Vito seguro).
+        action_recognized = None  # sinal de completude p/ a confiança (ver PipelineResult)
+        if infer_implicit and n_main_steps == 1 and active:
+            def _has(t):
+                return any(m.movement_type.value == t for m in active)
+
+            def _add_implicit(mt, rule, why):
+                mv = MovementResult(
+                    movement_type=getattr(_onto_mod.CMovement, mt),
+                    data_group=(active[0].data_group or "data"),
+                    functional_user="System", rule_id=rule, reasoning=why,
+                    source_step_id=active[0].source_step_id, source_text=text,
+                    is_triggering=False)
+                movements.append(mv)
+                active.append(mv)
+
+            # Classe do processo pelos verbos das ações (corrige a base pobre:
+            # muitos verbos de criação/consulta caem como Entry-só).
+            verbs = {at.verb_lemma for at in action_tuples}
+            is_write = bool(verbs & self.profile.implicit_write_verbs)
+            is_query = (not is_write) and bool(verbs & self.profile.implicit_query_verbs)
+            is_send = bool(verbs & self.profile.implicit_send_verbs)
+            # Cálculo (calcular/computar…): lê insumo e emite resultado → Read+Exit,
+            # mesmo par que consulta. Só quando não é já escrita/consulta explícita.
+            is_compute = (not is_write) and (not is_query) and \
+                bool(verbs & self.profile.implicit_compute_verbs)
+            # Completude: houve verbo de ação e ele casou com alguma classe?
+            action_recognized = (is_write or is_query or is_send or is_compute) \
+                if verbs else None
+
+            # Envio a outro usuário funcional (email/notificação) → Exit.
+            if is_send and not _has("X"):
+                _add_implicit("X", "R_IMPLICIT_SEND_EXIT",
+                              "Verbo de envio (enviar/notificar): saída ao usuário funcional → Exit.")
+
+            if is_write:
+                # criar/registrar/excluir… → o processo persiste o dado: Entry + Write.
+                if not _has("W"):
+                    _add_implicit("W", "R_IMPLICIT_WRITE",
+                                  "Verbo de escrita: o processo persiste o dado → Write.")
+                if not _has("E"):
+                    _add_implicit("E", "R_IMPLICIT_ENTRY",
+                                  "Verbo de escrita: o dado persistido entrou no processo → Entry.")
+            elif is_query:
+                # consultar/exibir/listar… → busca e devolve: Read + Exit.
+                if not _has("R"):
+                    _add_implicit("R", "R_IMPLICIT_READ",
+                                  "Verbo de consulta: busca no armazenamento → Read.")
+                if not _has("X"):
+                    _add_implicit("X", "R_IMPLICIT_EXIT",
+                                  "Verbo de consulta: o dado buscado é devolvido ao usuário → Exit.")
+            elif is_compute:
+                # calcular/computar… → lê o insumo e emite o resultado: Read + Exit.
+                if not _has("R"):
+                    _add_implicit("R", "R_IMPLICIT_COMPUTE_READ",
+                                  "Verbo de cálculo: lê o insumo no armazenamento → Read.")
+                if not _has("X"):
+                    _add_implicit("X", "R_IMPLICIT_COMPUTE_EXIT",
+                                  "Verbo de cálculo: o resultado é devolvido ao usuário → Exit.")
+
+            # Completa o PAR faltante (fallback para os demais processos).
+            if _has("W") and not _has("E"):
+                _add_implicit("E", "R_IMPLICIT_ENTRY",
+                              "Write implica Entry: o dado gravado entrou no processo (COSMIC).")
+            if _has("R") and not _has("X"):
+                _add_implicit("X", "R_IMPLICIT_EXIT",
+                              "Read implica Exit: o dado lido é devolvido ao usuário funcional.")
+            if _has("X") and not _has("R") and not is_send:
+                # Envio (email/notificação) é Entry+Exit: a saída NÃO implica Read
+                # prévio de armazenamento — só os Exit de dado consultado implicam.
+                _add_implicit("R", "R_IMPLICIT_READ",
+                              "Exit de dado armazenado implica Read prévio do armazenamento.")
+            cfp = len([m for m in movements if m.movement_type is not None])
+
         n_e = sum(1 for m in active if m.movement_type.value == "E")
         n_r = sum(1 for m in active if m.movement_type.value == "R")
         n_w = sum(1 for m in active if m.movement_type.value == "W")
@@ -324,6 +399,7 @@ class NerOntologyPipeline:
             n_reads=n_r,
             n_writes=n_w,
             n_exits=n_x,
+            action_recognized=action_recognized,
         )
 
     def _validate_write_override(self, action_text, actor, step_id, section):
@@ -331,27 +407,49 @@ class NerOntologyPipeline:
         'valida/checa ... e grava/salva X' produz 1 Write de X (a validação do
         dado digitado é interna, sem movimento). Mantém o total e corrige a
         decomposição. Retorna o ActionTuple de Write, ou None se não casa."""
-        if str(actor).strip().lower() not in ("system", "the system"):
+        if not self.profile.is_system_actor(str(actor)):
             return None
-        if not _VALIDATE_WRITE_RE.search(action_text):
+        if not self.profile.validate_write_re.search(action_text):
             return None
-        m = _WRITE_OBJ_RE.search(action_text)
-        obj = ((m.group(1).strip() if m else "") or "data")[:40]
+        m = self.profile.write_obj_re.search(action_text)
+        obj = ((m.group(1).strip() if m else "") or self.profile.default_data_label)[:40]
         return ActionTuple(
-            step_id=step_id, agent="system", verb="record", verb_lemma="record",
+            step_id=step_id, agent=self.profile.canonical_system_actor,
+            verb=self.profile.canonical_write_verb,
+            verb_lemma=self.profile.canonical_write_verb,
             theme=obj, source_text=action_text, entities=[], section=section,
             is_negated=False)
 
-    def _apply_lemma_fallback(self, atoms: list, text: str) -> list:
+    def _apply_lemma_fallback(self, atoms: list, text: str,
+                              infer_implicit: bool = False) -> list:
         """When the decomposer extracts a verb lemma not in any known set,
         scan the spaCy doc for a token whose lemma IS recognised.
 
         Also handles cases where spaCy mistagged a verb as ADJ/NOUN
         (e.g. "System open Module" → "open" tagged ADJ but lemma is
-        in _EXIT_VERBS).
+        in profile.exit_verbs).
         """
+        # Hoisted out of the token loop below: profile.all_verb_lemmas is a
+        # @property that recomputes the union of six frozensets on every
+        # access. It's accessed once per atom above and then again per-token
+        # in the spaCy doc loop; caching it in a local here turns that into a
+        # single computation for this call instead of one per token.
+        known_lemmas = self.profile.all_verb_lemmas
+        # Caminho de produto (infer_implicit): os verbos das classes de
+        # inferência (write/query/send/compute) TAMBÉM são reconhecidos — pelo
+        # bloco de implícitos, não pelos seis léxicos explícitos. Sem isto, um
+        # verbo como "calcular" (só em implicit_compute_verbs) é tratado como
+        # desconhecido e SUBSTITUÍDO por outro verbo da sentença, matando o
+        # sinal (bug: "calcular … e avisar" virava "avisar … e avisar"). A tese
+        # chama sem infer_implicit → known_lemmas inalterado, path intocado.
+        if infer_implicit:
+            known_lemmas = (known_lemmas | self.profile.implicit_write_verbs
+                            | self.profile.implicit_query_verbs
+                            | self.profile.implicit_send_verbs
+                            | self.profile.implicit_compute_verbs)
+
         needs_fix = any(
-            a.verb_lemma and a.verb_lemma not in _ALL_KNOWN_VERB_LEMMAS
+            a.verb_lemma and a.verb_lemma not in known_lemmas
             for a in atoms
         )
         if not needs_fix:
@@ -361,15 +459,15 @@ class NerOntologyPipeline:
         candidates = []
         for tok in doc:
             lemma = tok.lemma_.lower()
-            if lemma not in _ALL_KNOWN_VERB_LEMMAS:
+            if lemma not in known_lemmas:
                 continue
             is_verb_pos = tok.pos_ in ("VERB", "AUX")
-            is_adj_but_known = tok.pos_ == "ADJ" and lemma in _ALL_KNOWN_VERB_LEMMAS
+            is_adj_but_known = tok.pos_ == "ADJ" and lemma in known_lemmas
             if not (is_verb_pos or is_adj_but_known):
                 continue
             theme_parts = [
                 c.text for c in tok.subtree
-                if c != tok and c.dep_ not in ("nsubj", "nsubjpass", "punct")
+                if c != tok and not self.profile.is_subject(c) and c.dep_ != "punct"
             ]
             theme = " ".join(theme_parts).strip()
             candidates.append((lemma, tok.text, theme))
@@ -383,7 +481,7 @@ class NerOntologyPipeline:
             if (
                 not replaced
                 and atom.verb_lemma
-                and atom.verb_lemma not in _ALL_KNOWN_VERB_LEMMAS
+                and atom.verb_lemma not in known_lemmas
                 and candidates
             ):
                 lemma, verb_text, theme = candidates[0]
@@ -418,9 +516,9 @@ class NerOntologyPipeline:
 
     def _infer_actor(self, text: str, default: str) -> str:
         lower = text.lower()
-        if lower.startswith("the system ") or lower.startswith("system "):
-            return "System"
-        if lower.startswith("the actor ") or lower.startswith("the user "):
+        if lower.startswith(self.profile.actor_system_prefixes):
+            return self.profile.canonical_system_actor
+        if lower.startswith(self.profile.actor_user_prefixes):
             return default
         return default
 
@@ -551,18 +649,16 @@ class NerOntologyPipeline:
             lower = stripped.lower()
 
             bare = lower.strip().rstrip(":")
-            if bare in ("main scenario", "main flow"):
+            if bare in self.profile.uc_main_labels:
                 section = "main"
                 continue
-            elif lower.startswith("alternative flow"):
+            elif lower.startswith(self.profile.uc_alt_prefix):
                 section = "alt"
                 continue
-            elif lower.startswith("exception"):
+            elif lower.startswith(self.profile.uc_exception_prefix):
                 section = "exception"
                 continue
-            elif any(lower.startswith(h) for h in [
-                "reference table", "reference diagram", "gui:", "precondition",
-            ]):
+            elif lower.startswith(self.profile.uc_skip_prefix):
                 section = "skip"
                 continue
 
@@ -571,18 +667,24 @@ class NerOntologyPipeline:
                 if len(parts) == 2:
                     key = parts[0].strip().lower()
                     val = parts[1].strip()
-                    if key in ("id", ""):
+                    if key in self.profile.uc_id_labels or key == "":
                         if "\t" in val:
                             sub = val.split("\t", 1)
                             name = sub[1].strip() if len(sub) > 1 else sub[0].strip()
                         else:
                             name = val
-                    elif key == "primary actor":
+                    elif key in self.profile.uc_primary_actor_labels:
                         primary_actor = val
-                    elif key.startswith("actor"):
-                        primary_actor = val.split(",")[0].strip()
-                    elif key.startswith("secondary actor"):
+                    # Ator secundário ANTES de ator: em português "atores
+                    # secundários"/"atores de apoio" começam com o prefixo de
+                    # ator ("ator"), então checar ator primeiro os capturaria e
+                    # sobrescreveria o primary_actor. Em inglês não há colisão
+                    # ("secondary actor" não começa com "actor"), então a ordem
+                    # é indiferente lá — a regressão de 517 confirma.
+                    elif key.startswith(self.profile.uc_secondary_actor_prefix):
                         pass
+                    elif key.startswith(self.profile.uc_actor_prefix):
+                        primary_actor = val.split(",")[0].strip()
                 elif "–" in stripped and not name:
                     name = stripped.split("–", 1)[1].strip()
                 continue

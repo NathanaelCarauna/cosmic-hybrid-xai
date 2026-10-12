@@ -1,0 +1,17 @@
+# E30f Leakage Impact — Leaked vs Clean
+
+- **Leaked baseline:** `results/hybrid-xai/bert-improvements-turbo/E30f-correction-ensemble`
+- **Clean run:** `results/hybrid-xai/bert-improvements-clean-loocv/E30f-correction-ensemble`
+
+| Metric | Leaked | Clean | Δ abs | Δ % | Direction |
+|--------|--------|-------|-------|-----|-----------|
+| MAE | 0.5966 | 0.9328 | +0.3361 | +56.3% | lower is better |
+| MdAE | 0.0000 | 1.0000 | +1.0000 | +0.0% | lower is better |
+| MMRE | 0.0936 | 0.1947 | +0.1010 | +108.0% | lower is better |
+| PRED(25) | 0.8992 | 0.6891 | -0.2101 | -23.4% | higher is better |
+| SA | 0.7153 | 0.5550 | -0.1604 | -22.4% | higher is better |
+| R² | 0.8801 | 0.8404 | -0.0398 | -4.5% | higher is better |
+| ExactMatch | 0.6471 | 0.3782 | -0.2689 | -41.6% | higher is better |
+| Spearman | 0.8918 | 0.7299 | -0.1619 | -18.2% | higher is better |
+
+> **Key finding:** ΔMAE (clean − leaked) = **+0.3361** (+56.3%). Positive delta = clean is worse (leakage inflated results). Negative delta = clean is better (unexpected).

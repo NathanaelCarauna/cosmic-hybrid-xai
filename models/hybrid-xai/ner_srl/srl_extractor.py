@@ -1,17 +1,22 @@
 """Semantic Role Labeling extractor using spaCy dependency parsing.
 
-Extracts Agent-Verb-Theme triples from sentences and decomposes compound
-sentences (coordinated objects/verbs) into atomic actions.
+Extracts Agent-Verb-Theme triples from sentences (coordinated objects are
+expanded in-place via `_find_themes`). Compound-sentence decomposition into
+atomic actions is CompoundDecomposer's job (compound_decomposer.py); this
+module used to have its own `decompose()` too, but it was dead code (no
+caller — the pipeline only ever calls CompoundDecomposer.decompose) and was
+removed in Task 6-bis along with its duplicate persist-marker regex.
 
 This is a lightweight alternative to AllenNLP SRL, optimized for COSMIC
 functional size measurement domain.
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
 import spacy
+
+from .language_profile import ENGLISH, LanguageProfile
 
 
 @dataclass
@@ -37,22 +42,15 @@ class DecomposedAction:
     theme_span: tuple[int, int]
     source_text: str
     is_negated: bool = False
-    has_persist_marker: bool = False
     has_condition: bool = False
-    prep_context: str = ""
-
-
-_PERSIST_MARKERS = re.compile(
-    r"\b(persistent storage|database|db|file|table|record|storage|repository)\b",
-    re.IGNORECASE,
-)
 
 
 class SRLExtractor:
     """Extract semantic roles and decompose compound sentences."""
 
-    def __init__(self, nlp=None):
-        self.nlp = nlp or spacy.load("en_core_web_sm")
+    def __init__(self, nlp=None, profile: LanguageProfile = ENGLISH):
+        self.profile = profile
+        self.nlp = nlp or spacy.load(profile.spacy_model)
 
     def extract_roles(self, text: str) -> list[SemanticRole]:
         """Extract Agent-Verb-Theme triples from text."""
@@ -65,56 +63,13 @@ class SRLExtractor:
 
         return roles
 
-    def decompose(self, text: str) -> list[DecomposedAction]:
-        """Decompose text into atomic Agent-Verb-Theme actions."""
-        roles = self.extract_roles(text)
-        actions = []
-
-        for role in roles:
-            has_persist = bool(_PERSIST_MARKERS.search(text))
-
-            if not role.themes:
-                actions.append(DecomposedAction(
-                    agent=role.agent,
-                    verb=role.verb,
-                    verb_lemma=role.verb_lemma,
-                    theme="",
-                    theme_span=(0, 0),
-                    source_text=role.source_text,
-                    is_negated=role.is_negated,
-                    has_persist_marker=has_persist,
-                ))
-                continue
-
-            for theme, span in zip(role.themes, role.theme_spans):
-                prep = ""
-                doc_theme = self.nlp(text)
-                for tok in doc_theme:
-                    if tok.text.lower() == theme.split()[-1].lower() and tok.head.dep_ == "prep":
-                        prep = tok.head.text
-                        break
-
-                actions.append(DecomposedAction(
-                    agent=role.agent,
-                    verb=role.verb,
-                    verb_lemma=role.verb_lemma,
-                    theme=theme,
-                    theme_span=span,
-                    source_text=role.source_text,
-                    is_negated=role.is_negated,
-                    has_persist_marker=has_persist,
-                    prep_context=prep,
-                ))
-
-        return actions
-
     def _extract_from_sent(self, sent) -> list[SemanticRole]:
         """Extract roles from a single sentence span."""
         roles = []
         verbs = []
 
         for tok in sent:
-            if tok.pos_ == "VERB" and tok.dep_ in ("ROOT", "conj", "advcl", "xcomp", "ccomp", "relcl"):
+            if tok.pos_ == "VERB" and tok.dep_ in self.profile.verb_clause_deps:
                 verbs.append(tok)
 
         for verb in verbs:
@@ -126,7 +81,7 @@ class SRLExtractor:
             )
 
             role.is_negated = any(
-                child.dep_ == "neg" for child in verb.children
+                self.profile.is_negation(child) for child in verb.children
             )
 
             agent = self._find_agent(verb, sent)
@@ -148,13 +103,13 @@ class SRLExtractor:
     def _find_agent(self, verb, sent):
         """Find the agent (subject) of a verb."""
         for child in verb.children:
-            if child.dep_ in ("nsubj", "nsubjpass"):
+            if self.profile.is_subject(child):
                 return self._expand_compound(child, sent)
 
         if verb.dep_ == "conj":
             head = verb.head
             for child in head.children:
-                if child.dep_ in ("nsubj", "nsubjpass"):
+                if self.profile.is_subject(child):
                     return self._expand_compound(child, sent)
 
         return None
@@ -165,7 +120,7 @@ class SRLExtractor:
         spans = []
 
         for child in verb.children:
-            if child.dep_ in ("dobj", "attr"):
+            if self.profile.is_direct_object(child):
                 base_theme = self._expand_compound(child, sent)
                 themes.append(base_theme.text if hasattr(base_theme, "text") else str(base_theme))
                 if hasattr(base_theme, "start_char"):
@@ -181,9 +136,18 @@ class SRLExtractor:
                     else:
                         spans.append((conj.idx, conj.idx + len(conj.text)))
 
-            elif child.dep_ == "prep":
+            # Cadeia verbo->prep->pobj do esquema inglês do spaCy. Universal
+            # Dependencies NÃO tem equivalente direto para nenhum dos dois
+            # rótulos: a preposição vira "case" presa ao substantivo, e o
+            # substantivo pende do VERBO (não da preposição) como "obl" ou
+            # "nmod" — a estrutura se inverte, não é troca de rótulo. Os
+            # predicados abaixo já existem para isolar o seam, mas o caminho
+            # português de tema-via-preposição (via obl/nmod) ainda não foi
+            # escrito aqui: é responsabilidade da construção do perfil
+            # português na Task 9, com parses reais em mãos — não desta task.
+            elif self.profile.is_preposition(child):
                 for grandchild in child.children:
-                    if grandchild.dep_ == "pobj":
+                    if self.profile.is_prepositional_object(grandchild):
                         obj = self._expand_compound(grandchild, sent)
                         themes.append(obj.text if hasattr(obj, "text") else str(obj))
                         if hasattr(obj, "start_char"):
@@ -202,10 +166,19 @@ class SRLExtractor:
         return themes, spans
 
     def _expand_compound(self, token, sent):
-        """Expand a token to include its compound/amod modifiers (noun chunk)."""
-        for chunk in sent.as_doc().noun_chunks:
-            if chunk.root.i == token.i:
-                return chunk
+        """Expand a token to include its compound/amod modifiers (noun chunk).
+
+        noun_chunks depende do syntax iterator + vetores do modelo; parsers
+        alternativos (ex.: spacy-stanza) não o expõem e as_doc() pode estourar.
+        Nesse caso, degrada para o token nu — os léxicos de verbo (o que
+        importa para o CFP) não dependem do noun chunk.
+        """
+        try:
+            for chunk in sent.as_doc().noun_chunks:
+                if chunk.root.i == token.i:
+                    return chunk
+        except (ValueError, NotImplementedError):
+            pass
         return token
 
     def _find_modifiers(self, verb) -> list[str]:

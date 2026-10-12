@@ -23,9 +23,17 @@ rng = np.random.default_rng(42)
 
 
 def boot_ci(values_fn, yt, yp, n=10000):
+    """IC95 percentílico + a distribuição reamostrada que o produziu.
+
+    A distribuição é devolvida para que o p unilateral da SA saia das MESMAS
+    reamostragens do intervalo, sem consumir sorteios adicionais de `rng` — o
+    que deslocaria todas as células seguintes e quebraria a reprodutibilidade
+    byte a byte do artefato.
+    """
     idx = rng.integers(0, len(yt), size=(n, len(yt)))
     vals = np.array([values_fn(yt[i], yp[i]) for i in idx])
-    return np.nanpercentile(vals, [2.5, 97.5])
+    lo, hi = np.nanpercentile(vals, [2.5, 97.5])
+    return lo, hi, vals
 
 
 def mae_fn(yt, yp):
@@ -69,16 +77,28 @@ def main() -> None:
     #   - Zenodo: pipeline com a regra R_DISPLAY_IMPLICIT_READ ativa (held-out),
     #     MAE 0,345 / SA 0,161 — fonte: results/ner-ontology/e33d_zenodo_results.csv;
     #   - Nomes de UC (Ochodek): estimador linear por-formato em LOPO-CV
-    #     [n_obj, op_proc], MAE 4,41 / SA 0,067 — fonte: ochodek_holdout_per_item.csv.
-    def _load_deployed(path, idc, ytc, ypc):
+    #     [n_obj, op_proc], MAE 4,41 / SA 0,067 — fonte: ochodek_holdout_per_item.csv;
+    #   - Histórias de usuário (E34a): adaptador Connextra com o NER DESLIGADO,
+    #     MAE 0,469 / SA 0,349 — fonte: e34a_user_stories_results.csv. Sem este
+    #     override a célula vinha da configuração COM NER, que a arquitetura final
+    #     não usa (§4.3) e que diverge em um item (FP064, 3 contra 2). O item cai no
+    #     dev-20, de modo que a célula de teste-78 é idêntica nas duas configurações
+    #     — foi por isso que a discrepância sobreviveu até a revisão final.
+    def _load_deployed(path, idc, ytc, ypc, sufixo=True):
+        # `sufixo` desambigua ids repetidos entre sistemas (Zenodo/Ochodek). Para o
+        # E34a ele precisa ficar DESLIGADO: o id é a chave do mapa fp->us que
+        # recorta o conjunto de teste logo abaixo, e o sufixo quebraria a junção.
         with (BASE / path).open(newline="") as fh:
-            return [(r[idc] + f"#{k}", float(r[ytc]), float(r[ypc]))
+            return [(r[idc] + (f"#{k}" if sufixo else ""), float(r[ytc]), float(r[ypc]))
                     for k, r in enumerate(csv.DictReader(fh))]
 
     cells[("E33d", "zenodo")] = _load_deployed(
         "results/ner-ontology/e33d_zenodo_results.csv", "fp", "y_true", "y_pred")
     cells[("E33d", "ochodek")] = _load_deployed(
         "results/ner-ontology/ochodek_holdout_per_item.csv", "item_id", "y_true", "y_pred")
+    cells[("E34a", "user-stories")] = _load_deployed(
+        "results/ner-ontology/e34a_user_stories_results.csv", "fp", "y_true", "y_pred",
+        sufixo=False)
 
     # E34a test-78 (dev-20 excluído)
     gt2 = {r["us_id"]: r for r in csv.DictReader(
@@ -89,20 +109,30 @@ def main() -> None:
     e34a_all = cells[("E34a", "user-stories")]
     cells[("E34a-test78", "user-stories")] = [
         x for x in e34a_all if fpmap[x[0]] not in dev_ids]
+    # Mesma restrição aplicada ao competidor, para viabilizar o pareado sobre os 78
+    # (Parte C). Fica FORA da família de Holm: é reanálise de um subconjunto do par
+    # "E34a vs R1-COSMET" da Parte B, não uma hipótese independente.
+    cells[("R1-COSMET-test78", "user-stories")] = [
+        x for x in cells[("R1-COSMET", "user-stories")] if fpmap[x[0]] not in dev_ids]
 
     rows_a = []
     for (m, ds), items in sorted(cells.items()):
         yt = np.array([x[1] for x in items])
         yp = np.array([x[2] for x in items])
         mae = mae_fn(yt, yp); sa = sa_fn(yt, yp)
-        mlo, mhi = boot_ci(mae_fn, yt, yp)
-        slo, shi = boot_ci(sa_fn, yt, yp)
+        mlo, mhi, _ = boot_ci(mae_fn, yt, yp)
+        slo, shi, sa_vals = boot_ci(sa_fn, yt, yp)
+        # p unilateral: fração das reamostragens em que SA <= 0. Qualifica as
+        # células cujo IC bilateral cruza zero por pouco — é o valor que o texto
+        # cita para a célula de histórias de usuário (E34a-test78).
+        p_le0 = float(np.mean(sa_vals[~np.isnan(sa_vals)] <= 0))
         rows_a.append({
             "method": m, "dataset": ds, "n": len(items),
             "mae": round(mae, 3), "mae_ci95": f"[{mlo:.3f}, {mhi:.3f}]",
             "sa": round(sa, 3), "sa_ci95": f"[{slo:.3f}, {shi:.3f}]",
             "sa_sig": ("positivo" if slo > 0 else
                        "negativo" if shi < 0 else "indistinguível de 0"),
+            "p_sa_le_0": round(p_le0, 4),
         })
 
     # ---- pares ----
@@ -171,6 +201,27 @@ def main() -> None:
         r["holm_p"] = f"{holm[i]:.2e}"
         r["holm_sig"] = "sim" if holm[i] < ALPHA else "não"
 
+    # ---- Parte C: robustez da manchete à exclusão dos itens de desenvolvimento ----
+    # O adaptador Connextra foi calibrado observando o gabarito de 20 histórias
+    # (kappa_subset). Este par repete a comparação-manchete apenas sobre os 78 itens
+    # restantes. Calculado FORA da família de Holm (ver nota na criação da célula).
+    rows_c = []
+    ids78 = sorted({x[0] for x in cells[("E34a-test78", "user-stories")]}
+                   & {x[0] for x in cells[("R1-COSMET-test78", "user-stories")]})
+    if len(ids78) >= 10:
+        a78 = get_errs("E34a-test78", "user-stories", ids78)
+        b78 = get_errs("R1-COSMET-test78", "user-stories", ids78)
+        p78 = wilcoxon(a78, b78, zero_method="zsplit").pvalue
+        d78 = cliffs_delta(a78, b78)
+        rows_c.append({
+            "comparison": "E34a vs R1-COSMET (dev-20 excluído)",
+            "dataset": f"user-stories ({len(ids78)})",
+            "mae_1": round(a78.mean(), 3), "mae_2": round(b78.mean(), 3),
+            "wilcoxon_p": f"{p78:.2e}", "cliffs_delta": round(d78, 3),
+            "magnitude": magnitude(d78),
+            "melhor": "E34a" if a78.mean() < b78.mean() else "R1-COSMET",
+        })
+
     # ---- escreve ----
     out_csv = BASE / "results/final_statistical_table.csv"
     with out_csv.open("w", newline="") as f:
@@ -184,15 +235,24 @@ def main() -> None:
         w.writerow(list(rows_b[0].keys()))
         for r in rows_b:
             w.writerow(list(r.values()))
+        if rows_c:
+            w.writerow([])
+            w.writerow(["PARTE C — robustez (dev-20 excluído; FORA da família de Holm)"])
+            w.writerow(list(rows_c[0].keys()))
+            for r in rows_c:
+                w.writerow(list(r.values()))
 
     md = ["# Tabela Estatística Canônica (Sprint 4, T2)", "",
           "Bootstrap percentílico 10k (seed 42); Wilcoxon signed-rank sobre |erro| por item; Cliff's δ (limiar Romano et al.).", "",
           "## A — Células (MAE e SA com IC95)", "",
-          "| Método | Dataset | n | MAE [IC95] | SA [IC95] | SA |",
-          "|--------|---------|--:|------------|-----------|----|"]
+          "`p(SA<=0)` é o p unilateral das mesmas reamostragens do IC: fração dos "
+          "bootstraps com SA não-positiva. Qualifica as células cujo IC bilateral cruza zero.", "",
+          "| Método | Dataset | n | MAE [IC95] | SA [IC95] | SA | p(SA<=0) |",
+          "|--------|---------|--:|------------|-----------|----|---------:|"]
     for r in rows_a:
         md.append(f"| {r['method']} | {r['dataset']} | {r['n']} | "
-                  f"{r['mae']} {r['mae_ci95']} | {r['sa']} {r['sa_ci95']} | {r['sa_sig']} |")
+                  f"{r['mae']} {r['mae_ci95']} | {r['sa']} {r['sa_ci95']} | {r['sa_sig']} | "
+                  f"{r['p_sa_le_0']} |")
     md += ["", "## B — Comparações pareadas", "",
            "Wilcoxon signed-rank sobre |erro| por item; *p* (Holm) = valor-p ajustado "
            f"por Holm-Bonferroni sobre a família dos {len(rows_b)} testes pareados (α=0,05).", "",
@@ -202,6 +262,17 @@ def main() -> None:
         md.append(f"| {r['comparison']} | {r['dataset']} | {r['mae_1']} | {r['mae_2']} | "
                   f"{r['wilcoxon_p']} | {r['holm_p']} | {r['holm_sig']} | "
                   f"{r['cliffs_delta']} | {r['magnitude']} | {r['melhor']} |")
+    if rows_c:
+        md += ["", "## C — Robustez da manchete à exclusão dos itens de desenvolvimento", "",
+               "O adaptador Connextra foi calibrado observando o gabarito de 20 histórias "
+               "(`kappa_subset`). Esta comparação repete o par da Parte B apenas sobre os 78 "
+               "itens restantes. **Fora da família de Holm**: é reanálise de um subconjunto do "
+               "mesmo par, não hipótese independente.", "",
+               "| Comparação | Dataset | MAE₁ | MAE₂ | p (Wilcoxon) | Cliff's δ | Magnitude | Melhor |",
+               "|------------|---------|-----:|-----:|--------------|----------:|-----------|--------|"]
+        for r in rows_c:
+            md.append(f"| {r['comparison']} | {r['dataset']} | {r['mae_1']} | {r['mae_2']} | "
+                      f"{r['wilcoxon_p']} | {r['cliffs_delta']} | {r['magnitude']} | {r['melhor']} |")
     (BASE / "results/final_statistical_table.md").write_text("\n".join(md) + "\n")
 
     print(f"A: {len(rows_a)} células | B: {len(rows_b)} pares (Holm sobre {len(rows_b)} testes)")

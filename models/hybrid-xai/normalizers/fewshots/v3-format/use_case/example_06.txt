@@ -1,0 +1,24 @@
+Example 6 (Use Case, 17 CFP — dense checkout with coupon, multi-write pattern):
+Input: UC-ECOM-01 Process order checkout. Customer initiates checkout. System reads cart items, customer profile, saved shipping addresses, saved payment methods. System displays cart summary, shipping options, payment options. Customer fills shipping details, selects payment method, applies coupon code. System reads coupon records, reserves inventory, creates order record, creates payment transaction, decrements inventory stock. System sends order confirmation.
+Steps: 1. Customer clicks Checkout | 2. System reads cart, customer profile, addresses, payment methods | 3. System displays cart summary, shipping options, payment options | 4. Customer selects/confirms shipping address | 5. Customer selects payment method | 6. Customer enters coupon code | 7. System validates coupon | 8. System reserves inventory | 9. System creates order record | 10. System creates payment transaction | 11. System decrements inventory stock | 12. System sends order confirmation | Exception: System shows error if payment fails, coupon invalid, or stock unavailable
+
+Output (step 2 alone produces 4 R; steps 8–11 produce 4 separate W because each targets a DISTINCT persistent store):
+{"functional_processes": [{"name": "Process order checkout", "data_movements": [
+  {"type": "E", "data_group": "Checkout initiation", "object_of_interest": "Order", "functional_user": "Customer", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Cart items", "object_of_interest": "Cart", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Customer profile", "object_of_interest": "Customer", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Saved shipping addresses", "object_of_interest": "Address", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Saved payment methods", "object_of_interest": "Payment", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Cart summary", "object_of_interest": "Cart", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Shipping options", "object_of_interest": "Shipping", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Payment options", "object_of_interest": "Payment", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "E", "data_group": "Shipping address selection", "object_of_interest": "Address", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "E", "data_group": "Payment method selection", "object_of_interest": "Payment", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "E", "data_group": "Coupon code", "object_of_interest": "Coupon", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Coupon records", "object_of_interest": "Coupon", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Inventory reservation", "object_of_interest": "Inventory", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Order record", "object_of_interest": "Order", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Payment transaction", "object_of_interest": "Payment", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Inventory stock decrement", "object_of_interest": "Inventory", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Messages", "object_of_interest": "Order", "functional_user": "Customer", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}

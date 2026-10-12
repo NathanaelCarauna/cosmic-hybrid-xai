@@ -1,6 +1,6 @@
 // D3 — Via neural E30f (pipeline detalhado): SLM local + correção + ensemble.
 digraph e30f {
-  rankdir=LR;
+  rankdir=TB;
   fontname="Helvetica";
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#33333322"];
   edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];

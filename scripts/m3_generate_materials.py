@@ -31,40 +31,11 @@ UCS = [
 ]
 
 
-def to_mermaid(res, uc_label: str, actor: str = "Usuário") -> str:
-    """Diagrama de SEQUÊNCIA real gerado do trace do pipeline.
-
-    Mapeamento COSMIC (ISO 19761) → lifelines: o modelo de movimentos de
-    dados é, por definição, um diagrama de sequência com 3 participantes:
-      Entry (E):  Ator funcional  →  Sistema
-      Exit  (X):  Sistema         →  Ator funcional
-      Read  (R):  Armazenamento   →  Sistema
-      Write (W):  Sistema         →  Armazenamento
-    Com `autonumber`, a numeração das mensagens É a contagem de CFP.
-    """
-    label = " ".join(uc_label.replace("\t", " — ").split())[:60]
-    lines = ["sequenceDiagram",
-             "    autonumber",
-             f"    actor U as 👤 {actor}",
-             "    participant S as ⚙️ Sistema",
-             "    participant DB as 🗄️ Armazenamento",
-             f"    Note over U,DB: 📄 {label}"]
-    arrow = {
-        "E": ("U", "S", "->>"),
-        "X": ("S", "U", "->>"),
-        "R": ("DB", "S", "-->>"),
-        "W": ("S", "DB", "->>"),
-    }
-    for m in res.movements:
-        mt = str(m.movement_type).split(".")[-1]
-        if mt not in arrow:
-            continue
-        src, dst, arr = arrow[mt]
-        dg = str(m.data_group).replace('"', "'").strip() or "(grupo ambíguo)"
-        dg = " ".join(dg.split())[:38]
-        lines.append(f"    {src}{arr}{dst}: {mt} · {dg} · {m.rule_id}")
-    lines.append(f"    Note over U,DB: Σ {res.cfp} movimentos = CFP {res.cfp}")
-    return "\n".join(lines)
+from importlib.util import spec_from_file_location, module_from_spec
+_spec = spec_from_file_location("xai_symbolic",
+    str(BASE / "models" / "hybrid-xai" / "xai_symbolic.py"))
+_xai = module_from_spec(_spec); _spec.loader.exec_module(_xai)
+to_mermaid = _xai.diagram_mermaid
 
 
 def load_pipeline():

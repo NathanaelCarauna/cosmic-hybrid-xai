@@ -1,38 +1,51 @@
-// D4 — Modelos competidores reexecutados (R1, R2, R3), lado a lado.
+// D4 — Modelos competidores reexecutados (R1, R2, R3), um por faixa.
+// As quatro etapas ficam em colunas alinhadas: rank=same amarra a coluna
+// (exige newrank) e a largura fixa por coluna faz as três faixas começarem e
+// terminarem no mesmo ponto. Os clusters são declarados na ordem R3, R2, R1
+// porque o dot os empilha invertidos; arestas invisíveis entre faixas não
+// mudam essa ordem.
 digraph competidores {
   rankdir=LR;
+  newrank=true;
   fontname="Helvetica";
-  node [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled", color="#33333322"];
+  node [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+        color="#33333322", fixedsize=true, height=0.55];
   edge [fontname="Helvetica", fontsize=9, color="#555555", arrowsize=0.7];
-  nodesep=0.22; ranksep=0.45;
+  nodesep=0.22; ranksep=0.30;
 
-  subgraph cluster_r1 {
-    label="R1 · COSMET (De Vito, 2024)";
-    fontname="Helvetica"; fontsize=11; color="#b05a2a"; style="rounded"; bgcolor="#fbeee9";
-    r1in [label="Requisito", fillcolor="#eeeeee", shape=note];
-    r1p  [label="Prompt few-shot\n(manual COSMIC)", fillcolor="#f3ddd4"];
-    r1m  [label="GPT-4-turbo\nCAIXA-PRETA (API)", fillcolor="#e8b9a6", penwidth=1.4];
-    r1o  [label="CFP\n(sem trace de regra)", fillcolor="#e8e2f0"];
-    r1in -> r1p -> r1m -> r1o;
+  subgraph cluster_r3 {
+    label="R3 · HKO (Hussain)";
+    fontname="Helvetica"; fontsize=11; color="#3f9b56"; style="rounded"; bgcolor="#eef7f0";
+    r3in [label="Requisito informal", fillcolor="#eeeeee", shape=note, width=1.72];
+    r3f  [label="Características sintáticas\n(contagens, POS)", fillcolor="#d6ead9", width=2.15];
+    r3m  [label="C4.5 + mediana de classe\n(treina within-dataset)", fillcolor="#aedcb6", penwidth=1.4, width=2.15];
+    r3o  [label="CFP", fillcolor="#e8e2f0", width=1.60];
+    r3in -> r3f -> r3m -> r3o;
   }
 
   subgraph cluster_r2 {
     label="R2 · DEEP-COSMIC-UC (Ochodek)";
     fontname="Helvetica"; fontsize=11; color="#3f7bb0"; style="rounded"; bgcolor="#eef4fb";
-    r2in [label="Nome de caso de uso", fillcolor="#eeeeee", shape=note];
-    r2e  [label="Embeddings / tokenização", fillcolor="#d7e4f3"];
-    r2m  [label="CNN / RF / BERT\n(treinado em Ochodek)", fillcolor="#aec9e8", penwidth=1.4];
-    r2o  [label="CFP", fillcolor="#e8e2f0"];
+    r2in [label="Nome de caso de uso", fillcolor="#eeeeee", shape=note, width=1.72];
+    r2e  [label="Embeddings /\ntokenização", fillcolor="#d7e4f3", width=2.15];
+    r2m  [label="CNN / RF / BERT\n(treinado em Ochodek)", fillcolor="#aec9e8", penwidth=1.4, width=2.15];
+    r2o  [label="CFP", fillcolor="#e8e2f0", width=1.60];
     r2in -> r2e -> r2m -> r2o;
   }
 
-  subgraph cluster_r3 {
-    label="R3 · HKO (Hussain)";
-    fontname="Helvetica"; fontsize=11; color="#3f9b56"; style="rounded"; bgcolor="#eef7f0";
-    r3in [label="História de usuário", fillcolor="#eeeeee", shape=note];
-    r3f  [label="Características sintáticas\n(contagens, POS)", fillcolor="#d6ead9"];
-    r3m  [label="C4.5 + mediana de classe\n(treina within-dataset)", fillcolor="#aedcb6", penwidth=1.4];
-    r3o  [label="CFP", fillcolor="#e8e2f0"];
-    r3in -> r3f -> r3m -> r3o;
+  subgraph cluster_r1 {
+    label="R1 · COSMET (De Vito, 2024)";
+    fontname="Helvetica"; fontsize=11; color="#b05a2a"; style="rounded"; bgcolor="#fbeee9";
+    r1in [label="Requisito", fillcolor="#eeeeee", shape=note, width=1.72];
+    r1p  [label="Prompt few-shot\n(manual COSMIC)", fillcolor="#f3ddd4", width=2.15];
+    r1m  [label="GPT-4-turbo\nCAIXA-PRETA (API)", fillcolor="#e8b9a6", penwidth=1.4, width=2.15];
+    r1o  [label="CFP\n(sem trace de regra)", fillcolor="#e8e2f0", width=1.60];
+    r1in -> r1p -> r1m -> r1o;
   }
+
+  {rank=same; r1in; r2in; r3in;}
+  {rank=same; r1p;  r2e;  r3f;}
+  {rank=same; r1m;  r2m;  r3m;}
+  {rank=same; r1o;  r2o;  r3o;}
+
 }

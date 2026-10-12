@@ -2,7 +2,7 @@
 
 **Versão:** 1.0  
 **Data:** 2026-05-25  
-**Authors:** (omitted for double-anonymous review)
+**Autor:** Nathanael Caraúna Silveira da Motta  
 **Contexto:** Sprint 2, Track B — dataset R4 (100 User Stories do Dalpiaz Mendeley Data)
 
 ---

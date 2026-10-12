@@ -1,0 +1,4 @@
+formato,n,itens_marcados,frac_itens,frac_massa_erro,mae_marcados,mae_nao_marcados,discriminacao
+DE VITO (casos de uso),119,40,0.3361,0.4595,1.275,0.7595,1.679
+ZENODO (sentenças),2040,554,0.2716,0.4062,0.5162,0.2813,1.835
+USER STORIES (Connextra),98,29,0.2959,0.413,0.6552,0.3913,1.674

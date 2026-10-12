@@ -1,0 +1,62 @@
+Example C1 (User Story / Connextra, 3 CFP — create with no explicit read):
+Input: As an Operator, I want to add the maintenance window schedule to the system, so that the service is flagged as unavailable during planned upgrades.
+
+Reasoning: Create pattern. E1 window schedule data entered; W1 persists the window record; X1 confirmation. No explicit Read. The "so that" clause states business value, not a data movement.
+
+Output:
+{"functional_processes": [{"name": "Add maintenance window", "data_movements": [
+  {"type": "E", "data_group": "Maintenance window data", "object_of_interest": "Maintenance window", "functional_user": "Operator", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Maintenance window record", "object_of_interest": "Maintenance window", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Confirmation", "object_of_interest": "Maintenance window", "functional_user": "Operator", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}
+
+Example C2 (User Story / Connextra, 3 CFP — search, non-functional wording ignored):
+Input: As a librarian, I want to be able to quickly locate a catalogue entry, so that I can correct it.
+
+Reasoning: Search pattern. E1 search criteria; R1 catalogue entries; X1 results. The word "quickly" is a non-functional requirement and contributes no data movement. The "so that" clause is intent, not a separate process.
+
+Output:
+{"functional_processes": [{"name": "Locate catalogue entry", "data_movements": [
+  {"type": "E", "data_group": "Search criteria", "object_of_interest": "Catalogue entry", "functional_user": "Librarian", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Catalogue entries", "object_of_interest": "Catalogue entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Search results", "object_of_interest": "Catalogue entry", "functional_user": "Librarian", "is_triggering_entry": false, "is_error_confirmation": false}
+]}]}
+
+Example C3 (User Story / Connextra, 4 CFP — ambiguous "manage" as ONE cycle):
+Input: As a curator, I want to manage exhibit documentation, including condition photos, labels and loan agreements, so that I can retrieve it later.
+
+Reasoning: "manage" is an ambiguous CRUD verb without an explicit enumeration of operations. Treat it as a SINGLE management cycle: E1; R1; W1; X1 = 4 CFP. The list of document kinds ("photos, labels, agreements") is one data group, not three processes.
+
+Output:
+{"functional_processes": [{"name": "Manage exhibit documentation", "data_movements": [
+  {"type": "E", "data_group": "Documentation details", "object_of_interest": "Exhibit documentation", "functional_user": "Curator", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Existing documentation", "object_of_interest": "Exhibit documentation", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Documentation record", "object_of_interest": "Exhibit documentation", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Confirmation", "object_of_interest": "Exhibit documentation", "functional_user": "Curator", "is_triggering_entry": false, "is_error_confirmation": true}
+]}]}
+
+Example C4 (User Story / Connextra, 11 CFP — EXPLICIT CRUD decomposes into 3 processes):
+Input: As a Catalogue Administrator, I want to create, update and delete any entries in my catalogue.
+
+Reasoning: CRUD is explicitly ENUMERATED, so it decomposes into one functional process per operation (contrast with Example C3, where "manage" was not enumerated). create = 1E+1W+1X (3, no read needed); update = 1E+1R+1W+1X (4); delete = 1E+1R+1W+1X (4). Total 11 CFP across 3 processes.
+
+Output:
+{"functional_processes": [
+ {"name": "Create catalogue entry", "data_movements": [
+  {"type": "E", "data_group": "Entry data", "object_of_interest": "Catalogue entry", "functional_user": "Catalogue Administrator", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Entry record", "object_of_interest": "Catalogue entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Confirmation", "object_of_interest": "Catalogue entry", "functional_user": "Catalogue Administrator", "is_triggering_entry": false, "is_error_confirmation": true}
+ ]},
+ {"name": "Update catalogue entry", "data_movements": [
+  {"type": "E", "data_group": "Updated entry data", "object_of_interest": "Catalogue entry", "functional_user": "Catalogue Administrator", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Existing entry", "object_of_interest": "Catalogue entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Entry record", "object_of_interest": "Catalogue entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Confirmation", "object_of_interest": "Catalogue entry", "functional_user": "Catalogue Administrator", "is_triggering_entry": false, "is_error_confirmation": true}
+ ]},
+ {"name": "Delete catalogue entry", "data_movements": [
+  {"type": "E", "data_group": "Entry identifier", "object_of_interest": "Catalogue entry", "functional_user": "Catalogue Administrator", "is_triggering_entry": true, "is_error_confirmation": false},
+  {"type": "R", "data_group": "Existing entry", "object_of_interest": "Catalogue entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Entry record", "object_of_interest": "Catalogue entry", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Confirmation", "object_of_interest": "Catalogue entry", "functional_user": "Catalogue Administrator", "is_triggering_entry": false, "is_error_confirmation": true}
+ ]}
+]}

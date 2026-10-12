@@ -1,0 +1,52 @@
+Example S1 (Sentence, 2 CFP — read + display, error message COLLAPSES into the same Exit):
+Input: B-Reg obtains the Member details. B-Reg displays the Member details. Display error message.
+
+Reasoning: A single sentence group describes ONE functional process. R1 reads member details; X1 displays them. The error message does NOT add a movement: confirmation and error messages of a process are aggregated into a single Exit. There is no Entry here because no data crosses inward in this fragment.
+
+Output:
+{"functional_processes": [{"name": "Obtain member details", "data_movements": [
+  {"type": "R", "data_group": "Member details", "object_of_interest": "Member", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Member details", "object_of_interest": "Member", "functional_user": "User", "is_triggering_entry": false, "is_error_confirmation": false}
+]}]}
+
+Example S2 (Sentence, 1 CFP — single Exit, no entry invented):
+Input: System sends a notification to the supervisor and the trainee.
+
+Reasoning: One Exit only. Two recipients do NOT make two movements: the same data group leaving the boundary once is a single Exit. Do not invent a triggering Entry that the text does not state.
+
+Output:
+{"functional_processes": [{"name": "Send notification", "data_movements": [
+  {"type": "X", "data_group": "Notification", "object_of_interest": "Notification", "functional_user": "Supervisor", "is_triggering_entry": false, "is_error_confirmation": false}
+]}]}
+
+Example S3 (Sentence, 2 CFP — write + display of generated identifier):
+Input: B-Reg creates a new Member record. B-Reg displays the generated Member ID. Display error message.
+
+Reasoning: W1 persists the new record; X1 displays the generated identifier. Error message collapses into the existing Exit and adds nothing. No Read: creating does not require reading here.
+
+Output:
+{"functional_processes": [{"name": "Create member record", "data_movements": [
+  {"type": "W", "data_group": "Member record", "object_of_interest": "Member", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "X", "data_group": "Member identifier", "object_of_interest": "Member", "functional_user": "User", "is_triggering_entry": false, "is_error_confirmation": false}
+]}]}
+
+Example S4 (Sentence, 1 CFP — user action is an Entry, not a click count):
+Input: User can click view details to continue to the applicant review.
+
+Reasoning: E1 only. The click carries a selection of domain data inward, which is one Entry. Navigation and screen transitions are not data movements; do not add an Exit for the resulting screen unless the text states that data is displayed.
+
+Output:
+{"functional_processes": [{"name": "View applicant details", "data_movements": [
+  {"type": "E", "data_group": "Applicant selection", "object_of_interest": "Applicant", "functional_user": "User", "is_triggering_entry": true, "is_error_confirmation": false}
+]}]}
+
+Example S5 (Sentence, 2 CFP — read + write, no display stated):
+Input: The system checks the completeness of the applicant's submission and records the outcome.
+
+Reasoning: R1 reads the submission to check it; W1 records the outcome. No Exit: the text does not state that anything is displayed or sent outward. Do not add an Exit by default.
+
+Output:
+{"functional_processes": [{"name": "Check applicant submission", "data_movements": [
+  {"type": "R", "data_group": "Applicant submission", "object_of_interest": "Applicant", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false},
+  {"type": "W", "data_group": "Check outcome", "object_of_interest": "Applicant", "functional_user": null, "is_triggering_entry": false, "is_error_confirmation": false}
+]}]}
